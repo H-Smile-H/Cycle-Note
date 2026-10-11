@@ -21,10 +21,23 @@
 .inline-edit[hidden]{display:none!important}
 #summaryEditActions{display:flex;gap:8px;align-items:center}
 #summaryEditActions button[hidden]{display:none!important}
+
+/* 修正：下部の旧手入力パネルは常時非表示。上部の距離・時間直下の入力欄だけを使う */
+#editStatsArea,#summaryEditPanel{display:none!important}
+#rideForm #manualDistance,#rideForm #manualMinutes,#rideForm #averageSpeedAuto{display:none!important}
+#rideForm .fields>div:has(#manualDistance),
+#rideForm .fields>div:has(#manualMinutes),
+#rideForm .fields>div:has(#averageSpeedAuto){display:none!important}
+.inline-edit{display:block!important}
+.inline-edit[hidden]{display:none!important}
+
+.metric-input{display:block;width:100%;box-sizing:border-box;margin:4px 0 0;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center;outline:none}
+.metric-input[readonly]{cursor:default}
+.metric-input:focus{border-bottom:1px solid #176b55}
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
-<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong><input id="topDistanceInput" class="inline-edit" type="number" min="0" step="0.01" aria-label="実測距離（km）" readonly><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong><input id="topMinutesInput" class="inline-edit" type="number" min="0" step="1" aria-label="実測走行時間（分）" readonly><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
+<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><input id="distance" class="metric-input" type="number" min="0" step="0.01" value="0.00" aria-label="実測距離（km）" readonly><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><input id="duration" class="metric-input" type="text" value="00:00" aria-label="実測走行時間" readonly><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
 
 
 <p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
@@ -147,8 +160,8 @@ function updateStats(){
  const gpsActive=gpsState!=='idle';
  const km=gpsActive?gpsDistanceKm:Math.max(0,Number($('manualDistance').value)||0);
  const mins=gpsActive?currentGpsMinutes():Math.max(0,Number($('manualMinutes').value)||0);
- $('distance').textContent=km.toFixed(2)+' km';
- $('duration').textContent=formatDuration(mins);
+ $('distance').value=km.toFixed(2);
+ $('duration').value=formatDuration(mins);
  $('speed').textContent=(mins>0?km/(mins/60):0).toFixed(1)+' km/h';
   if($('topDistanceInput').readOnly){$('topDistanceInput').value=km.toFixed(2);$('topMinutesInput').value=mins;}
  $('averageSpeedAuto').textContent=(mins>0?km/(mins/60):0).toFixed(1)+' km/h';
@@ -218,7 +231,7 @@ summaryPanel.appendChild(dataPanel.querySelector('form'));
 summaryPanel.appendChild(historyPanel);
 dataPanel.remove();
 // 予定・実績を同じプルダウンで選ぶ。予定はコース保存、走行済み/数値入力は実績保存。
-$('editSummary').onclick=()=>{const area=$('editStatsArea');area.classList.toggle('open');area.style.display=area.classList.contains('open')?'block':'none';$('manualDistance').scrollIntoView({behavior:'smooth',block:'center'});};
+/* 旧式の展開処理は削除。編集操作は下のインライン入力欄のみ */
 $('unifiedSave').onclick=()=>{
  const name=$('unifiedCourseName').value.trim()||$('place').value.trim(); $('place').value=name; if(!name){alert('コース名を入力してください。');return}
  const hasRoute=routePoints.length>=2||plannedPoints.length>=2;
@@ -276,34 +289,30 @@ $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
 $('topDistanceInput').hidden=false;$('topMinutesInput').hidden=false;
 $('topDistanceInput').readOnly=true;$('topMinutesInput').readOnly=true;
-let summaryEditOriginal={distance:'',minutes:''};
+// topDistanceInput を削除したため、存在しない入力欄を参照する編集ハンドラは停止
+let savedMetricValues={distance:'0.00',duration:'00:00'};
+$('updateSummary').hidden=true;$('updateSummary').style.display='none';
+$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 $('editSummary').onclick=()=>{
- summaryEditOriginal.distance=$('topDistanceInput').value;
- summaryEditOriginal.minutes=$('topMinutesInput').value;
- $('topDistanceInput').value=parseFloat($('distance').textContent)||parseFloat($('manualDistance').value)||0;
- $('topMinutesInput').value=parseFloat($('manualMinutes').value)||0;
- $('topDistanceInput').readOnly=false;$('topMinutesInput').readOnly=false;
+ savedMetricValues={distance:$('distance').value,duration:$('duration').value};
+ $('distance').readOnly=false;$('duration').readOnly=false;
  $('editSummary').style.display='none';
  $('updateSummary').hidden=false;$('updateSummary').style.display='inline-flex';
  $('cancelSummary').hidden=false;$('cancelSummary').style.display='inline-flex';
- $('topDistanceInput').focus();
+ $('distance').focus();
 };
 $('updateSummary').onclick=()=>{
- $('manualDistance').value=$('topDistanceInput').value;
- $('manualMinutes').value=$('topMinutesInput').value;
- $('topDistanceInput').readOnly=true;$('topMinutesInput').readOnly=true;
- $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
- $('updateSummary').hidden=true;$('updateSummary').style.display='none';
- $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ $('manualDistance').value=Math.max(0,Number($('distance').value)||0);
+ const parts=$('duration').value.split(':').map(Number);
+ $('manualMinutes').value=parts.length===2?(parts[0]*60+(parts[1]||0)):(Number($('duration').value)||0);
+ $('distance').readOnly=true;$('duration').readOnly=true;
+ $('editSummary').style.display='inline-flex';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
  updateStats();
 };
 $('cancelSummary').onclick=()=>{
- $('topDistanceInput').value=summaryEditOriginal.distance;
- $('topMinutesInput').value=summaryEditOriginal.minutes;
- $('topDistanceInput').readOnly=true;$('topMinutesInput').readOnly=true;
- $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
- $('updateSummary').hidden=true;$('updateSummary').style.display='none';
- $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ $('distance').value=savedMetricValues.distance;$('duration').value=savedMetricValues.duration;
+ $('distance').readOnly=true;$('duration').readOnly=true;
+ $('editSummary').style.display='inline-flex';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 };
 const oldSaveCourse=$('saveCourse').onclick;
 $('saveCourse').onclick=()=>{if(oldSaveCourse)oldSaveCourse();setTimeout(refreshUnifiedCourseOptions,0)};
