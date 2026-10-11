@@ -87,4 +87,19 @@ function render(){const rides=getRides(),el=$('history');if(!rides.length){el.in
 $('rideForm').onsubmit=e=>{e.preventDefault();const ride={date:$('date').value,place:$('place').value.trim(),distance:Number($('manualDistance').value||0),minutes:Number($('manualMinutes').value||0),notes:$('notes').value.trim(),photo:photoData,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p}))};try{const rides=getRides();rides.push(ride);saveRides(rides);render();$('place').value='';$('manualDistance').value='';$('manualMinutes').value='';$('notes').value='';$('photo').value='';photoData='';routePoints=[];stops=[];gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録は停止中です。';refreshMap();updateStats();alert('記録を保存しました！')}catch(err){alert('保存できませんでした。写真のサイズを小さくして再度お試しください。')}};
 $('export').onclick=()=>{const blob=new Blob([JSON.stringify(getRides(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cycle-note-backup.json';a.click();URL.revokeObjectURL(url)};
 render();updateStats();setTimeout(()=>map.invalidateSize(),250);
+// 起動時に現在地を取得し、地図の中心を現在地へ移動（走行記録は開始しない）
+function centerMapOnCurrentLocation(){
+ if(!navigator.geolocation){$('mapStatus').textContent='このブラウザでは現在地を取得できません。';return;}
+ if(!window.isSecureContext){$('mapStatus').textContent='現在地の取得にはHTTPSまたはlocalhostが必要です。';return;}
+ $('mapStatus').textContent='現在地を取得しています…';
+ navigator.geolocation.getCurrentPosition(pos=>{
+  const lat=pos.coords.latitude,lng=pos.coords.longitude;
+  map.setView([lat,lng],15);
+  $('mapStatus').textContent=`現在地を地図の中心に表示しました（精度 約${Math.round(pos.coords.accuracy)}m）。走行記録は開始していません。`;
+ },err=>{
+  const messages={1:'現在地を表示するには、ブラウザで位置情報を許可してください。',2:'現在地を取得できませんでした。屋外などで再読み込みしてお試しください。',3:'現在地の取得がタイムアウトしました。'};
+  $('mapStatus').textContent=messages[err.code]||'現在地を取得できませんでした。';
+ },{enableHighAccuracy:true,maximumAge:30000,timeout:15000});
+}
+centerMapOnCurrentLocation();
 </script></body></html>
