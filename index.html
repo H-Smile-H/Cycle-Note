@@ -71,7 +71,7 @@ input#duration, input#distance {font-size:1.25em;text-align:left}
 <div><label>平均時速（自動計算）</label><p id="averageSpeedAuto" class="status">0.0 km/h</p></div>
 </div>
 <div id="courseEstimate" class="status">予定ルートは未選択です。</div>
-<div class="actions form-actions"><button type="button" id="unifiedSave">保存</button><button type="button" id="unifiedDelete" class="danger">削除</button></div><div hidden><button type="button" id="saveCourse">予定コース保存</button><button type="button" id="deleteCourse">コース削除</button></div>
+<div class="actions form-actions"><button type="button" id="unifiedSave">保存</button><button type="button" id="unifiedDelete" class="danger">削除</button><button type="button" id="clearAllScreen" class="secondary">画面ALLクリア</button></div><div hidden><button type="button" id="saveCourse">予定コース保存</button><button type="button" id="deleteCourse">コース削除</button></div>
 <div class="actions" id="editStatsArea" style="display:none"><p class="hint">距離・時間を手入力できます</p></div>
 <div class="actions planned-actions" id="plannedRouteActions" hidden><button type="button" id="clearPlannedRoute" class="secondary">予定ルートを非表示</button><button type="button" id="deletePlannedRoute" class="danger">予定ルート削除</button></div>
 <div id="courseStatus" class="status" aria-live="polite">予定コースは任意です。コースを選ばずに走行記録を保存することもできます。</div>
@@ -258,7 +258,16 @@ $('unifiedSave').onclick=()=>{
  if(!hasRide && !hasRoute){alert('予定ルートを作るか、距離・時間を入力してから保存してください。');return}
  const rides=getRides();
  const ride={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),kind:'ride',date:$('date').value,place:name,distance:Number($('manualDistance').value||gpsDistanceKm||0),minutes:Number($('manualMinutes').value||currentGpsMinutes()||0),notes:$('notes').value.trim(),photo:photoData,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p})),courseId:$('savedCourses').value||null};
- rides.push(ride);saveRides(rides);render();gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='記録を保存しました。次のGPS記録を開始できます。';updateStats();$('courseStatus').textContent='走行実績を新しい記録として保存しました。';renderCourseHistory(name);alert('走行実績を保存しました。次のGPS記録を開始できます。');
+ const sameDayIndex=rides.findIndex(r=>String(r.date||'')===ride.date&&String(r.place||'').trim()===name&&r.kind!=='course');
+ let saveMessage='走行実績を新規保存しました。';
+ if(sameDayIndex>=0){
+   const existing=rides[sameDayIndex];
+   const overwrite=confirm(`同日・同コースの記録がすでにあります。\n\n日付：${ride.date}\nコース：${name}\n距離：${Number(existing.distance||0).toFixed(2)} km\n\n「OK」＝既存記録を上書き\n「キャンセル」＝新規保存するか選ぶ`);
+   if(overwrite){ride.id=existing.id;rides[sameDayIndex]=ride;saveMessage='同日・同コースの記録を上書きしました。';}
+   else if(confirm('新しい記録として追加保存しますか？\n「OK」＝新規保存\n「キャンセル」＝保存を中止')){rides.push(ride);}
+   else {return;}
+ }else{rides.push(ride);}
+ saveRides(rides);render();gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();if(gpsTimer){clearInterval(gpsTimer);gpsTimer=null;}setGpsButtons();$('gpsStatus').textContent='記録を保存しました。次のGPS記録を開始できます。';updateStats();$('courseStatus').textContent=saveMessage;renderCourseHistory(name);alert(saveMessage+' 次のGPS記録を開始できます。');
 };
 $('unifiedDelete').onclick=()=>{
  const id=$('savedCourses').value;
@@ -266,6 +275,16 @@ $('unifiedDelete').onclick=()=>{
  const rides=getRides();if(!rides.length){alert('削除する保存データがありません。');return}
  const latest=rides[rides.length-1];if(!confirm(`最新の走行実績「${latest.place||'サイクリング'}」を削除しますか？`))return;
  saveRides(rides.slice(0,-1));render();$('courseStatus').textContent='最新の走行実績を削除しました。';
+};
+$('clearAllScreen').onclick=()=>{
+ if(!confirm('画面上の入力内容・地図上の編集中ルートをすべてクリアしますか？\n保存済みの走行記録・予定コースは削除されません。'))return;
+ if(gpsState==='recording'||gpsState==='paused'||gpsState==='stopped'){
+   if(gpsState==='recording')gpsElapsedMs+=Date.now()-gpsStartedAt;
+   gpsState='idle';stopGpsWatcher();if(gpsTimer){clearInterval(gpsTimer);gpsTimer=null;}gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;setGpsButtons();$('gpsStatus').textContent='画面クリアによりGPS記録を停止しました。';
+ }
+ $('unifiedCourseName').value='';$('place').value='';$('manualDistance').value='';$('manualMinutes').value='';$('notes').value='';$('photo').value='';photoData='';$('extraDetails').open=false;
+ routePoints=[];matchedRoutePoints=[];stops=[];plannedPoints=[];routeLine.setLatLngs([]);if(plannedLine)plannedLine.setLatLngs([]);routeMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers.forEach(m=>map.removeLayer(m));stopMarkers=[];
+ $('savedCourses').value='';updateTopPlannedValues(null);renderCourseHistory('');refreshMap();updateStats();$('courseStatus').textContent='画面をクリアしました。保存済みの記録・コースは残っています。';
 };
 window.addEventListener('scroll',()=> $('topButton').classList.toggle('visible',window.scrollY>250));
 $('topButton').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
