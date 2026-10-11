@@ -37,7 +37,7 @@
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
-<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><input id="distance" class="metric-input" type="number" min="0" step="0.01" value="0.00" aria-label="実測距離（km）" readonly><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><input id="duration" class="metric-input" type="text" value="00:00" aria-label="実測走行時間" readonly><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
+<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><input id="distance" class="metric-input" type="text" value="0.00 km" aria-label="実測距離（km）" disabled><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><input id="duration" class="metric-input" type="text" value="00:00" aria-label="実測走行時間" disabled><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
 
 
 <p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
@@ -160,10 +160,9 @@ function updateStats(){
  const gpsActive=gpsState!=='idle';
  const km=gpsActive?gpsDistanceKm:Math.max(0,Number($('manualDistance').value)||0);
  const mins=gpsActive?currentGpsMinutes():Math.max(0,Number($('manualMinutes').value)||0);
- $('distance').value=km.toFixed(2);
+ if($('distance').disabled){$('distance').value=km.toFixed(2)+' km';} else {$('distance').value=km.toFixed(2);}
  $('duration').value=formatDuration(mins);
  $('speed').textContent=(mins>0?km/(mins/60):0).toFixed(1)+' km/h';
-  if($('topDistanceInput').readOnly){$('topDistanceInput').value=km.toFixed(2);$('topMinutesInput').value=mins;}
  $('averageSpeedAuto').textContent=(mins>0?km/(mins/60):0).toFixed(1)+' km/h';
   updateRouteEstimate();
  if(gpsActive){$('manualDistance').value=km.toFixed(2);$('manualMinutes').value=mins;}
@@ -287,32 +286,41 @@ function updateTopPlannedValues(c){
 $('updateSummary').hidden=true;$('updateSummary').style.display='none';
 $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
-$('topDistanceInput').hidden=false;$('topMinutesInput').hidden=false;
-$('topDistanceInput').readOnly=true;$('topMinutesInput').readOnly=true;
 // topDistanceInput を削除したため、存在しない入力欄を参照する編集ハンドラは停止
-let savedMetricValues={distance:'0.00',duration:'00:00'};
+let savedMetricValues={distance:'0.00 km',duration:'00:00'};
 $('updateSummary').hidden=true;$('updateSummary').style.display='none';
 $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 $('editSummary').onclick=()=>{
  savedMetricValues={distance:$('distance').value,duration:$('duration').value};
- $('distance').readOnly=false;$('duration').readOnly=false;
- $('editSummary').style.display='none';
+ $('distance').disabled=false;$('duration').disabled=false;
+ $('distance').type='number';$('distance').min='0';$('distance').step='0.01';
+ $('distance').value=parseFloat(savedMetricValues.distance)||0;
+ $('duration').value=savedMetricValues.duration;
+ $('editSummary').hidden=true;$('editSummary').style.display='none';
  $('updateSummary').hidden=false;$('updateSummary').style.display='inline-flex';
  $('cancelSummary').hidden=false;$('cancelSummary').style.display='inline-flex';
  $('distance').focus();
 };
 $('updateSummary').onclick=()=>{
- $('manualDistance').value=Math.max(0,Number($('distance').value)||0);
- const parts=$('duration').value.split(':').map(Number);
- $('manualMinutes').value=parts.length===2?(parts[0]*60+(parts[1]||0)):(Number($('duration').value)||0);
- $('distance').readOnly=true;$('duration').readOnly=true;
- $('editSummary').style.display='inline-flex';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ const km=Math.max(0,parseFloat($('distance').value)||0);
+ const rawDuration=$('duration').value.trim();
+ let mins=0;
+ if(rawDuration.includes(':')){const parts=rawDuration.split(':').map(Number);mins=Math.max(0,(parts[0]||0)*60+(parts[1]||0));}
+ else mins=Math.max(0,Number(rawDuration)||0);
+ $('manualDistance').value=km.toFixed(2);$('manualMinutes').value=mins;
+ $('distance').type='text';$('distance').value=km.toFixed(2)+' km';$('distance').disabled=true;
+ $('duration').value=formatDuration(mins);$('duration').disabled=true;
+ $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
+ $('updateSummary').hidden=true;$('updateSummary').style.display='none';
+ $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
  updateStats();
 };
 $('cancelSummary').onclick=()=>{
- $('distance').value=savedMetricValues.distance;$('duration').value=savedMetricValues.duration;
- $('distance').readOnly=true;$('duration').readOnly=true;
- $('editSummary').style.display='inline-flex';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ $('distance').type='text';$('distance').value=savedMetricValues.distance;$('distance').disabled=true;
+ $('duration').value=savedMetricValues.duration;$('duration').disabled=true;
+ $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
+ $('updateSummary').hidden=true;$('updateSummary').style.display='none';
+ $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
 };
 const oldSaveCourse=$('saveCourse').onclick;
 $('saveCourse').onclick=()=>{if(oldSaveCourse)oldSaveCourse();setTimeout(refreshUnifiedCourseOptions,0)};
