@@ -668,7 +668,7 @@ document.head.appendChild(recordButtonLayoutStyle);
  if(routeActions){routeActions.style.display='flex';routeActions.style.flexWrap='wrap';routeActions.style.gap='8px';routeActions.querySelectorAll('button').forEach(b=>b.style.flex='1 1 150px');}
  const oldEditLoader=loadRideForEditing;
  loadRideForEditing=function(r){oldEditLoader(r);$('unifiedSave').disabled=true;$('unifiedSave').dataset.editLocked='1';};
- const finishEdit=()=>{delete $('unifiedSave').dataset.editLocked;syncDataRegisterButton();};
+ const finishEdit=()=>{delete $('unifiedSave').dataset.editLocked;syncDataRegisterButton();$('distance').disabled=true;$('duration').disabled=true;};
  const oldUpdate=$('updateSummary').onclick;
  $('updateSummary').onclick=function(){if(oldUpdate)oldUpdate();finishEdit();};
  const oldCancel=$('cancelSummary').onclick;
@@ -678,7 +678,7 @@ document.head.appendChild(recordButtonLayoutStyle);
  const oldRegister=$('unifiedSave').onclick;
  $('unifiedSave').onclick=function(){if($('unifiedSave').dataset.editLocked==='1'){alert('右上の「更新」または「キャンセル」を押してください。');return;}if(oldRegister)oldRegister();};
  // 上部編集ボタンは不要。更新・キャンセルのみ表示
- const edit=$('editSummary');if(edit)edit.remove();
+ const edit=$('editSummary');if(edit){edit.style.display='none';edit.hidden=true;}
  const hdr=document.querySelector('.app-header-row');if(hdr){hdr.style.display='flex';hdr.style.justifyContent='space-between';hdr.style.alignItems='center';hdr.style.gap='12px';hdr.style.flexWrap='wrap';}
 })();
 </script>
