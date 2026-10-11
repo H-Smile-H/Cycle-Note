@@ -40,6 +40,17 @@ input#duration, input#distance {
   text-align: left;
 }
 #summaryEditActions button[hidden]{display:none!important}
+
+.course-picker{position:relative;width:100%}
+.course-picker input{width:100%;box-sizing:border-box}
+.course-options{position:absolute;z-index:1000;top:100%;left:0;right:0;max-height:220px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 5px 14px rgba(0,0,0,.14)}
+.course-options button{display:block;width:100%;padding:10px 12px;text-align:left;border:0;border-radius:0;background:#fff;color:#1f2937}
+.course-options button:hover,.course-options button:focus{background:#e7f5ef}
+.course-options[hidden]{display:none!important}
+input#duration, input#distance {font-size:1.25em;text-align:left}
+@media (max-width: 520px) {
+  input#duration, input#distance {font-size:1.05rem;}
+}
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
@@ -53,7 +64,7 @@ input#duration, input#distance {
 <section class="panel wide"><h2>走行記録を保存</h2><form id="rideForm">
 <div class="fields">
 <div><label for="date">日付</label><input id="date" type="date" required></div>
-<div><label for="unifiedCourseName">コース名（選択または入力）</label><input id="unifiedCourseName" list="courseNameOptions" placeholder="コースを選択／手入力"><datalist id="courseNameOptions"></datalist></div>
+<div><label for="unifiedCourseName">コース名（選択または入力）</label><div class="course-picker"><input id="unifiedCourseName" autocomplete="off" placeholder="コースを選択／手入力" aria-label="コース名"><div id="courseNameOptions" class="course-options" hidden></div></div></div>
 <div hidden><label for="savedCourses">保存済みコース</label><select id="savedCourses"><option value="">コースを選択／手入力</option></select><label for="place">コース名</label><input id="place"></div>
 <div><label for="manualDistance">実走距離（km） <span id="plannedDistanceLabel" class="inline-estimate"></span></label><input id="manualDistance" type="number" min="0" step="0.01" placeholder="GPS計測または手入力"></div>
 <div><label for="manualMinutes">走行時間（分） <span id="plannedTimeLabel" class="inline-estimate"></span></label><input id="manualMinutes" type="number" min="0" step="1" placeholder="GPS計測または手入力"></div>
@@ -263,20 +274,39 @@ $('topButton').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
 // Unified top controls: single course field (datalist), editable distance/time in the top summary.
 const oldCourseSelect=$('savedCourses'), oldPlaceInput=$('place');
 function refreshUnifiedCourseOptions(){
- const courses=getCourses();const names=[...new Set(courses.map(c=>c.name).filter(Boolean))];
- $('courseNameOptions').innerHTML=names.map(n=>`<option value="${escapeHtml(n)}"></option>`).join('');
+ const courses=getCourses();
+ const names=[...new Set(courses.map(c=>c.name).filter(Boolean))];
+ const list=$('courseNameOptions');
+ list.innerHTML='';
+ names.forEach(name=>{
+   const btn=document.createElement('button');btn.type='button';btn.textContent=name;
+   btn.addEventListener('click',()=>{
+     $('unifiedCourseName').value=name;oldPlaceInput.value=name;
+     const course=getCourses().find(c=>c.name===name);
+     if(course){oldCourseSelect.value=course.id;showPlannedCourse(course,false);updateTopPlannedValues(course);}
+     list.hidden=true;
+   });
+   list.appendChild(btn);
+ });
  oldCourseSelect.innerHTML='<option value="">新規作成／手入力</option>'+courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 }
 refreshUnifiedCourseOptions();
-$('unifiedCourseName').addEventListener('input',()=>{
- const name=$('unifiedCourseName').value.trim();oldPlaceInput.value=name;
+const courseNameInput=$('unifiedCourseName'), courseOptions=$('courseNameOptions');
+courseNameInput.addEventListener('focus',()=>{refreshUnifiedCourseOptions();courseOptions.hidden=courseOptions.children.length===0;});
+courseNameInput.addEventListener('click',()=>{refreshUnifiedCourseOptions();courseOptions.hidden=courseOptions.children.length===0;});
+courseNameInput.addEventListener('input',()=>{
+ const name=courseNameInput.value.trim();oldPlaceInput.value=name;
  const course=getCourses().find(c=>c.name===name);
  if(course){oldCourseSelect.value=course.id;showPlannedCourse(course,false);updateTopPlannedValues(course);}
  else {oldCourseSelect.value='';updateTopPlannedValues(null);}
+ const filter=name.toLocaleLowerCase();
+ [...courseOptions.children].forEach(btn=>{btn.hidden=!btn.textContent.toLocaleLowerCase().includes(filter)});
+ courseOptions.hidden=courseOptions.children.length===0||!([...courseOptions.children].some(btn=>!btn.hidden));
 });
+document.addEventListener('click',e=>{if(!e.target.closest('.course-picker'))courseOptions.hidden=true;});
 oldCourseSelect.addEventListener('change',()=>{
  const c=getCourses().find(x=>x.id===oldCourseSelect.value);if(!c)return;
- $('unifiedCourseName').value=c.name;oldPlaceInput.value=c.name;showPlannedCourse(c,false);updateTopPlannedValues(c);
+ courseNameInput.value=c.name;oldPlaceInput.value=c.name;showPlannedCourse(c,false);updateTopPlannedValues(c);
 });
 function updateTopPlannedValues(c){
  const pts=(c&&c.route)||plannedPoints||[];
