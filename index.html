@@ -122,6 +122,8 @@ async function routePointsAlongRoad(points, targetLine, kind){
  }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let gpsFollowMap=true;
+map.on('dragstart zoomstart',()=>{gpsFollowMap=false;});
 map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap({fitView:false});if($('mapMode').value==='route'&&gpsState==='idle')routePointsAlongRoad(routePoints,routeLine,'manual');updateStats()});
 $('undoPoint').onclick=()=>{if($('mapMode').value==='stop'&&stops.length)stops.pop();else if(routePoints.length)routePoints.pop();refreshMap();$('mapStatus').textContent='最後の点を削除しました。'};
 $('clearMap').onclick=()=>{if(!confirm('ルート点と立ち寄り先をすべて削除しますか？'))return;routePoints=[];stops=[];refreshMap();$('mapStatus').textContent='地図の点をすべて削除しました。'};
@@ -252,17 +254,18 @@ function startGpsWatcher(){
     }
     // 1m未満の揺れでは基準点を更新しない。小さな移動を捨て続けて距離が伸びない問題を防ぐ
   }
-  map.panTo([p.lat,p.lng],{animate:false});if(routePoints.length>=4)scheduleRouteMatch();updateStats();
+  if(gpsFollowMap)map.panTo([p.lat,p.lng],{animate:false});if(routePoints.length>=4)scheduleRouteMatch();updateStats();
   $('gpsStatus').textContent=`GPS記録中… 精度 約${Math.round(pos.coords.accuracy)}m`;
  },gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&gpsState==='recording')$('gpsStatus').textContent='バックグラウンド中です。iPhoneではGPS記録が一時停止する場合があります。画面を戻して記録状態を確認してください。';});
 $('gpsStart').onclick=()=>{
  if(!navigator.geolocation){$('gpsStatus').textContent='このブラウザはGPSに対応していません。';return;}
  if(!window.isSecureContext){$('gpsStatus').textContent='GPSには安全な接続が必要です。VS CodeのLive Serverで http://localhost から開くか、HTTPSのページで利用してください。';return;}
- gpsState='recording';gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];matchedRoutePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
+ gpsState='recording';gpsFollowMap=true;gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];matchedRoutePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
 };
 $('gpsPause').onclick=()=>{if(gpsState!=='recording')return;gpsElapsedMs+=Date.now()-gpsStartedAt;gpsState='paused';stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録を一時停止しました。';updateStats();};
-$('gpsResume').onclick=()=>{if(gpsState!=='paused')return;gpsState='recording';gpsStartedAt=Date.now();setGpsButtons();$('gpsStatus').textContent='GPS記録を再開しました。';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);};
+$('gpsResume').onclick=()=>{if(gpsState!=='paused')return;gpsState='recording';gpsFollowMap=true;gpsStartedAt=Date.now();setGpsButtons();$('gpsStatus').textContent='GPS記録を再開しました。';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);};
 $('gpsStop').onclick=()=>{if(gpsState==='recording')gpsElapsedMs+=Date.now()-gpsStartedAt;gpsState='stopped';stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録を終了しました。距離・時間は保存フォームに反映されています。';updateStats();};
 
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f){photoData='';return}if(f.size>4*1024*1024){alert('写真は4MB以下のものを選んでください。');$('photo').value='';photoData='';return}const reader=new FileReader();reader.onload=()=>{photoData=reader.result};reader.readAsDataURL(f)};
