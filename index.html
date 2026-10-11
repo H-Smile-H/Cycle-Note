@@ -97,8 +97,32 @@ tileLayer.on('load',()=>{$('mapStatus').textContent='地図を表示しました
 routeLine=L.polyline([],{color:'#16805d',weight:5}).addTo(map);
 let plannedPoints=[],plannedLine=L.polyline([],{color:'#2563eb',weight:4,dashArray:'8 8'}).addTo(map);
 function refreshMap(){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`実走・ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops,plannedPoints);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
+// 予定ルート／手動で置いたルート点を道路に沿わせる（OSRMの道路ルーティング）
+let plannedRouteRequest=0, manualRouteRequest=0;
+async function routePointsAlongRoad(points, targetLine, kind){
+ if(!points||points.length<2)return;
+ const requestId=kind==='planned'?++plannedRouteRequest:++manualRouteRequest;
+ const coords=points.map(p=>`${p.lng},${p.lat}`).join(';');
+ try{
+  const response=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);
+  if(!response.ok)throw new Error('route unavailable');
+  const data=await response.json();
+  if(requestId!==(kind==='planned'?plannedRouteRequest:manualRouteRequest))return;
+  if(data.code==='Ok'&&data.routes&&data.routes[0]){
+   const roadPoints=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+   targetLine.setLatLngs(roadPoints);
+   if(kind==='planned')$('courseStatus').textContent='道路に沿った予定ルートを表示しています。';
+   else $('mapStatus').textContent='道路に沿ったルートを表示しています。';
+  }else throw new Error('no route');
+ }catch(e){
+  if(requestId!==(kind==='planned'?plannedRouteRequest:manualRouteRequest))return;
+  targetLine.setLatLngs(points.map(p=>[p.lat,p.lng]));
+  const msg='道路ルートを取得できませんでした。直線表示に戻しています（通信・道路データの制限の可能性があります）。';
+  if(kind==='planned')$('courseStatus').textContent=msg;else $('mapStatus').textContent=msg;
+ }
+}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap();updateStats()});
+map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap();if($('mapMode').value==='route'&&gpsState==='idle')routePointsAlongRoad(routePoints,routeLine,'manual');updateStats()});
 $('undoPoint').onclick=()=>{if($('mapMode').value==='stop'&&stops.length)stops.pop();else if(routePoints.length)routePoints.pop();refreshMap();$('mapStatus').textContent='最後の点を削除しました。'};
 $('clearMap').onclick=()=>{if(!confirm('ルート点と立ち寄り先をすべて削除しますか？'))return;routePoints=[];stops=[];refreshMap();$('mapStatus').textContent='地図の点をすべて削除しました。'};
 function updateCurrentLocation(pos){
@@ -148,11 +172,11 @@ function showCourseEstimate(points){
  $('plannedRouteActions').hidden=!has;
 }
 function showPlannedCourse(c,fit=true){
- plannedPoints=(c&&c.route||[]).map(p=>({lat:p.lat,lng:p.lng}));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));
+ plannedPoints=(c&&c.route||[]).map(p=>({lat:p.lat,lng:p.lng}));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));if(plannedPoints.length>1)routePointsAlongRoad(plannedPoints,plannedLine,'planned');
  if(c){$('place').value=c.name;showCourseEstimate(plannedPoints);if(fit&&plannedPoints.length>1)map.fitBounds(plannedLine.getBounds(),{padding:[24,24],maxZoom:15});$('courseStatus').textContent=`「${c.name}」の予定ルートを表示しています。`}
  else {showCourseEstimate([])}
 }
-$('savedCourses').onchange=()=>{const c=getCourses().find(c=>c.id===$('savedCourses').value);if(c)showPlannedCourse(c);else{plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='コース未選択です。コース名を手入力できます。'}};
+$('savedCourses').onchange=()=>{const c=getCourses().find(c=>c.id===$('savedCourses').value);if(c)showPlannedCourse(c);else{plannedRouteRequest++;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='コース未選択です。コース名を手入力できます。'}};
 $('saveCourse').onclick=()=>{
  const name=$('place').value.trim();if(!name){alert('コース名を入力してください。');return}
  const sourcePoints=routePoints.length>=2?routePoints:plannedPoints;
@@ -167,8 +191,8 @@ $('deleteCourse').onclick=()=>{
  const courses=getCourses(),c=courses.find(c=>c.id===id);if(!c||!confirm(`保存コース「${c.name}」を削除しますか？`))return;
  saveCourses(courses.filter(x=>x.id!==id));if(plannedPoints.length&&$('place').value===c.name){plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([])}refreshCourseSelect();$('courseStatus').textContent='保存コースを削除しました。';
 };
-$('clearPlannedRoute').onclick=()=>{plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='予定ルートを非表示にしました。保存済みコースは削除されていません。'};
-$('deletePlannedRoute').onclick=()=>{if(!plannedPoints.length)return;if(!confirm('表示中の予定ルートを削除しますか？保存済みコース自体は残ります。'))return;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='表示中の予定ルートを削除しました。保存済みコースは残っています。'};
+$('clearPlannedRoute').onclick=()=>{plannedRouteRequest++;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='予定ルートを非表示にしました。保存済みコースは削除されていません。'};
+$('deletePlannedRoute').onclick=()=>{if(!plannedPoints.length)return;if(!confirm('表示中の予定ルートを削除しますか？保存済みコース自体は残ります。'))return;plannedRouteRequest++;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='表示中の予定ルートを削除しました。保存済みコースは残っています。'};
 refreshCourseSelect();
 let gpsWatchId=null,gpsState='idle',gpsStartedAt=0,gpsElapsedMs=0,gpsLastPoint=null,gpsDistanceKm=0,gpsTimer=null;
 function formatDuration(mins){const totalSeconds=Math.max(0,Math.floor((Number(mins)||0)*60));return `${Math.floor(totalSeconds/3600).toString().padStart(2,'0')}:${Math.floor((totalSeconds%3600)/60).toString().padStart(2,'0')}:${(totalSeconds%60).toString().padStart(2,'0')}`}
