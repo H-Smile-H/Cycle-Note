@@ -96,7 +96,7 @@ tileLayer.on('tileerror',()=>{tileErrorCount++;if(tileErrorCount>=3){$('mapStatu
 tileLayer.on('load',()=>{$('mapStatus').textContent='地図を表示しました。地図をクリックしてルートや立ち寄り先を登録できます。';});
 routeLine=L.polyline([],{color:'#16805d',weight:5}).addTo(map);
 let plannedPoints=[],plannedLine=L.polyline([],{color:'#2563eb',weight:4,dashArray:'8 8'}).addTo(map);
-function refreshMap(){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`実走・ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops,plannedPoints);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
+function refreshMap(options={}){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`実走・ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops,plannedPoints);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
 // 予定ルート／手動で置いたルート点を道路に沿わせる（OSRMの道路ルーティング）
 let plannedRouteRequest=0, manualRouteRequest=0;
 async function routePointsAlongRoad(points, targetLine, kind){
@@ -122,7 +122,7 @@ async function routePointsAlongRoad(points, targetLine, kind){
  }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap();if($('mapMode').value==='route'&&gpsState==='idle')routePointsAlongRoad(routePoints,routeLine,'manual');updateStats()});
+map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap({fitView:false});if($('mapMode').value==='route'&&gpsState==='idle')routePointsAlongRoad(routePoints,routeLine,'manual');updateStats()});
 $('undoPoint').onclick=()=>{if($('mapMode').value==='stop'&&stops.length)stops.pop();else if(routePoints.length)routePoints.pop();refreshMap();$('mapStatus').textContent='最後の点を削除しました。'};
 $('clearMap').onclick=()=>{if(!confirm('ルート点と立ち寄り先をすべて削除しますか？'))return;routePoints=[];stops=[];refreshMap();$('mapStatus').textContent='地図の点をすべて削除しました。'};
 function updateCurrentLocation(pos){
@@ -237,11 +237,22 @@ function startGpsWatcher(){
  if(!navigator.geolocation){$('gpsStatus').textContent='このブラウザは位置情報に対応していません。';return;}
  gpsWatchId=navigator.geolocation.watchPosition(pos=>{
   if(gpsState!=='recording')return;
+  const accuracy=Number(pos.coords.accuracy)||999;
+  if(accuracy>60){$('gpsStatus').textContent=`GPS精度が低いため位置を保留中… 精度 約${Math.round(accuracy)}m`;updateStats();return;}
   const p={lat:Number(pos.coords.latitude.toFixed(6)),lng:Number(pos.coords.longitude.toFixed(6))};
   updateCurrentLocation(pos);
-  if(gpsLastPoint){const delta=haversineKm(gpsLastPoint,p);if(delta>=0.003&&delta<1){gpsDistanceKm+=delta;routePoints.push(p);refreshMap();}else if(delta>=1){$('gpsStatus').textContent='位置が大きく移動したため、GPSの誤差としてこの点は距離に加算しませんでした。';}}
-  else {routePoints.push(p);refreshMap();}
-  gpsLastPoint=p;map.panTo([p.lat,p.lng],{animate:true});if(routePoints.length>=4)scheduleRouteMatch();updateStats();
+  if(!gpsLastPoint){
+    routePoints.push(p);gpsLastPoint=p;refreshMap({fitView:false});
+  }else{
+    const delta=haversineKm(gpsLastPoint,p);
+    if(delta>=0.001&&delta<0.5){
+      gpsDistanceKm+=delta;routePoints.push(p);gpsLastPoint=p;refreshMap({fitView:false});
+    }else if(delta>=0.5){
+      $('gpsStatus').textContent='位置が大きく移動したため、この点は距離に加算しませんでした。';
+    }
+    // 1m未満の揺れでは基準点を更新しない。小さな移動を捨て続けて距離が伸びない問題を防ぐ
+  }
+  map.panTo([p.lat,p.lng],{animate:false});if(routePoints.length>=4)scheduleRouteMatch();updateStats();
   $('gpsStatus').textContent=`GPS記録中… 精度 約${Math.round(pos.coords.accuracy)}m`;
  },gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
