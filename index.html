@@ -258,7 +258,7 @@ $('unifiedSave').onclick=()=>{
  if(!hasRide && !hasRoute){alert('予定ルートを作るか、距離・時間を入力してから保存してください。');return}
  const rides=getRides();
  const ride={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),kind:'ride',date:$('date').value,place:name,distance:Number($('manualDistance').value||gpsDistanceKm||0),minutes:Number($('manualMinutes').value||currentGpsMinutes()||0),notes:$('notes').value.trim(),photo:photoData,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p})),courseId:$('savedCourses').value||null};
- rides.push(ride);saveRides(rides);render();$('courseStatus').textContent='走行実績を新しい記録として保存しました。';alert('走行実績を保存しました。');
+ rides.push(ride);saveRides(rides);render();gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='記録を保存しました。次のGPS記録を開始できます。';updateStats();$('courseStatus').textContent='走行実績を新しい記録として保存しました。';renderCourseHistory(name);alert('走行実績を保存しました。次のGPS記録を開始できます。');
 };
 $('unifiedDelete').onclick=()=>{
  const id=$('savedCourses').value;
@@ -273,6 +273,22 @@ $('topButton').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
 
 // Unified top controls: single course field (datalist), editable distance/time in the top summary.
 const oldCourseSelect=$('savedCourses'), oldPlaceInput=$('place');
+function renderCourseHistory(courseName){
+ const el=$('courseHistory');
+ if(!el)return;
+ const name=String(courseName||'').trim();
+ if(!name){el.innerHTML='<p class="empty">コースを選択すると履歴を表示します。</p>';return;}
+ const rides=getRides().filter(r=>String(r.place||'').trim()===name).slice().reverse().slice(0,5);
+ if(!rides.length){el.innerHTML='<p class="empty">このコースの過去記録はまだありません。</p>';return;}
+ el.innerHTML='';
+ rides.forEach(r=>{
+  const item=document.createElement('article');item.className='record';item.tabIndex=0;item.title='クリックして距離・時間・ルートを読み込む';
+  const h=document.createElement('h3');h.textContent=`${r.date||'日付なし'} — ${name}`;item.appendChild(h);
+  const meta=document.createElement('div');meta.className='record-meta';const km=Number(r.distance)||0,mins=Number(r.minutes)||0;meta.textContent=`${km.toFixed(2)} km ・ ${mins} 分 ・ 平均 ${mins>0?(km/(mins/60)).toFixed(1):'0.0'} km/h`;item.appendChild(meta);
+  const load=()=>{$('manualDistance').value=km;$('manualMinutes').value=mins;$('unifiedCourseName').value=name;$('place').value=name;updateStats();routePoints=(r.route||[]).map(p=>({lat:p.lat,lng:p.lng}));matchedRoutePoints=[];stops=(r.stops||[]).map(p=>({...p}));refreshMap();$('courseStatus').textContent=`過去記録「${name}」(${r.date||'日付なし'})を読み込みました。`;};
+  item.addEventListener('click',load);item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();load();}});el.appendChild(item);
+ });
+}
 function refreshUnifiedCourseOptions(){
  const courses=getCourses();
  const names=[...new Set(courses.map(c=>c.name).filter(Boolean))];
@@ -288,7 +304,7 @@ function refreshUnifiedCourseOptions(){
        routePoints=[];matchedRoutePoints=[];stops=[];
        routeLine.setLatLngs([]);routeMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];
        stopMarkers.forEach(m=>map.removeLayer(m));stopMarkers=[];
-       showPlannedCourse(course,true);refreshMap();updateTopPlannedValues(course);
+       showPlannedCourse(course,true);refreshMap();updateTopPlannedValues(course);renderCourseHistory(name);
      }
      list.hidden=true;
    });
@@ -297,14 +313,15 @@ function refreshUnifiedCourseOptions(){
  oldCourseSelect.innerHTML='<option value="">新規作成／手入力</option>'+courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 }
 refreshUnifiedCourseOptions();
+renderCourseHistory('');
 const courseNameInput=$('unifiedCourseName'), courseOptions=$('courseNameOptions');
 courseNameInput.addEventListener('focus',()=>{refreshUnifiedCourseOptions();courseOptions.hidden=courseOptions.children.length===0;});
 courseNameInput.addEventListener('click',()=>{refreshUnifiedCourseOptions();courseOptions.hidden=courseOptions.children.length===0;});
 courseNameInput.addEventListener('input',()=>{
  const name=courseNameInput.value.trim();oldPlaceInput.value=name;
  const course=getCourses().find(c=>c.name===name);
- if(course){oldCourseSelect.value=course.id;showPlannedCourse(course,false);updateTopPlannedValues(course);}
- else {oldCourseSelect.value='';updateTopPlannedValues(null);}
+ if(course){oldCourseSelect.value=course.id;showPlannedCourse(course,false);updateTopPlannedValues(course);renderCourseHistory(name);}
+ else {oldCourseSelect.value='';updateTopPlannedValues(null);renderCourseHistory(name);}
  const filter=name.toLocaleLowerCase();
  [...courseOptions.children].forEach(btn=>{btn.hidden=!btn.textContent.toLocaleLowerCase().includes(filter)});
  courseOptions.hidden=courseOptions.children.length===0||!([...courseOptions.children].some(btn=>!btn.hidden));
@@ -312,15 +329,15 @@ courseNameInput.addEventListener('input',()=>{
 document.addEventListener('click',e=>{if(!e.target.closest('.course-picker'))courseOptions.hidden=true;});
 oldCourseSelect.addEventListener('change',()=>{
  const c=getCourses().find(x=>x.id===oldCourseSelect.value);if(!c)return;
- courseNameInput.value=c.name;oldPlaceInput.value=c.name;showPlannedCourse(c,false);updateTopPlannedValues(c);
+ courseNameInput.value=c.name;oldPlaceInput.value=c.name;showPlannedCourse(c,false);updateTopPlannedValues(c);renderCourseHistory(c.name);
 });
 function updateTopPlannedValues(c){
  const pts=(c&&c.route)||plannedPoints||[];
  const km=pts.length>1?pts.slice(1).reduce((sum,p,i)=>sum+haversineKm(pts[i],p),0):0;
  const mins=km>0?Math.round(km/15*60):0;
- $('topPlannedDistance').textContent=km>0?`② ${km.toFixed(2)} km`:'② --';
- $('topPlannedTime').textContent=mins?`② ${humanMinutes(mins)}`:'② --';
- $('topPlannedSpeed').textContent=mins?`② ${(km/(mins/60)).toFixed(1)} km/h`:'② --';
+ $('topPlannedDistance').textContent=km>0?`${km.toFixed(2)} km`:'--';
+ $('topPlannedTime').textContent=mins?`${humanMinutes(mins)}`:'--';
+ $('topPlannedSpeed').textContent=mins?`${(km/(mins/60)).toFixed(1)} km/h`:'--';
  $('plannedDistanceLabel').textContent=km>0?`予定 ${km.toFixed(2)} km`:'';
  $('plannedTimeLabel').textContent=mins?`予定 ${humanMinutes(mins)}`:'';
  $('courseEstimate').textContent=km>0?`予定距離 ${km.toFixed(2)} km ／ 予想時間 ${humanMinutes(mins)}（平均15km/hで概算）`:'予定ルートは未選択です。';
