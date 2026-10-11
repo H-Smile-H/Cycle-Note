@@ -682,6 +682,92 @@ document.head.appendChild(recordButtonLayoutStyle);
  const hdr=document.querySelector('.app-header-row');if(hdr){hdr.style.display='flex';hdr.style.justifyContent='space-between';hdr.style.alignItems='center';hdr.style.gap='12px';hdr.style.flexWrap='wrap';}
 })();
 </script>
+
+<script>
+// Final fix: persist edited historical records and fully reset screen fields.
+let activeRideEditKey = null;
+let activeRideEditSnapshot = null;
+function rideIdentityMatch(x, snap) {
+ if (!x || !snap) return false;
+ if (snap.id != null && snap.id !== '') return x.id === snap.id;
+ return String(x.date||'')===String(snap.date||'') && String(x.place||'')===String(snap.place||'') && Number(x.distance||0)===Number(snap.distance||0) && Number(x.minutes||0)===Number(snap.minutes||0);
+}
+const loadRideForEditingFinalBase = loadRideForEditing;
+loadRideForEditing = function(r) {
+ activeRideEditKey = r.id != null && r.id !== '' ? {id:r.id} : null;
+ activeRideEditSnapshot = {...r};
+ loadRideForEditingFinalBase(r);
+ $('unifiedSave').disabled = true;
+ $('unifiedSave').dataset.editLocked = '1';
+};
+function parseDurationToMinutesFinal(raw) {
+ const v=String(raw||'').trim();
+ if(v.includes(':')) { const p=v.split(':').map(n=>Math.max(0,Number(n)||0)); if(p.length>=3)return (p[0]||0)*60+(p[1]||0)+(p[2]||0)/60; return (p[0]||0)*60+(p[1]||0); }
+ return Math.max(0,Number(v)||0);
+}
+$('updateSummary').onclick = function() {
+ if (!activeRideEditSnapshot) { alert('編集対象の記録がありません。履歴の「編集」から開き直してください。'); return; }
+ const km=Math.max(0,Number($('distance').value)||0);
+ const mins=parseDurationToMinutesFinal($('duration').value);
+ const place=$('unifiedCourseName').value.trim() || $('place').value.trim();
+ const date=$('date').value || activeRideEditSnapshot.date || '';
+ const rides=getRides();
+ let idx=-1;
+ if(activeRideEditKey) idx=rides.findIndex(x=>x.id===activeRideEditKey.id);
+ if(idx<0) idx=rides.findIndex(x=>rideIdentityMatch(x,activeRideEditSnapshot));
+ if(idx<0) { alert('更新する過去記録が見つかりません。履歴を再表示して、もう一度「編集」を押してください。'); return; }
+ const old=rides[idx];
+ rides[idx]={...old,date,place,distance:km,minutes:mins,notes:$('notes').value.trim(),photo:photoData||old.photo||'',route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p}))};
+ try { saveRides(rides); }
+ catch(e) { alert('記録を保存できませんでした。'); return; }
+ activeRideEditSnapshot=null; activeRideEditKey=null;
+ $('distance').type='text';$('distance').value=km.toFixed(2)+' km';$('distance').disabled=true;
+ $('duration').type='text';$('duration').value=formatDuration(mins);$('duration').disabled=true;
+ $('editSummary').hidden=true;$('editSummary').style.display='none';
+ $('updateSummary').hidden=true;$('updateSummary').style.display='none';
+ $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ delete $('unifiedSave').dataset.editLocked;
+ render();renderCourseHistory(place);updateStats();syncDataRegisterButton();
+ $('courseStatus').textContent='編集した走行記録を更新しました。';
+ alert('走行記録を更新しました。');
+};
+const cancelEditFinalBase = $('cancelSummary').onclick;
+$('cancelSummary').onclick = function() {
+ if(activeRideEditSnapshot) {
+  const r=activeRideEditSnapshot;
+  $('date').value=r.date||'';$('manualDistance').value=Number(r.distance)||0;$('manualMinutes').value=Number(r.minutes)||0;
+  $('unifiedCourseName').value=r.place||'';$('place').value=r.place||'';$('notes').value=r.notes||'';photoData=r.photo||'';
+  $('distance').type='text';$('distance').value=(Number(r.distance)||0).toFixed(2)+' km';$('distance').disabled=true;
+  $('duration').type='text';$('duration').value=formatMinutesAsClock(Number(r.minutes)||0);$('duration').disabled=true;
+  routePoints=(r.route||[]).map(p=>({lat:p.lat,lng:p.lng}));stops=(r.stops||[]).map(p=>({...p}));matchedRoutePoints=[];refreshMap();updateStats();
+ }
+ activeRideEditSnapshot=null;activeRideEditKey=null;
+ $('editSummary').hidden=true;$('editSummary').style.display='none';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ delete $('unifiedSave').dataset.editLocked;syncDataRegisterButton();
+ $('courseStatus').textContent='編集をキャンセルしました。';
+};
+// Override the screen-clear handler instead of relying on a chain of older handlers.
+$('clearAllScreen').onclick = function() {
+ if(!confirm('画面上の入力内容・地図上の編集中ルートをすべてクリアしますか？\n保存済みの走行記録・予定コースは削除されません。')) return;
+ if(gpsState==='recording'||gpsState==='paused'||gpsState==='stopped') {
+  if(gpsState==='recording')gpsElapsedMs+=Date.now()-gpsStartedAt;
+  gpsState='idle';stopGpsWatcher();if(gpsTimer){clearInterval(gpsTimer);gpsTimer=null;}
+ }
+ gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;gpsStartedAt=0;
+ activeRideEditSnapshot=null;activeRideEditKey=null;delete $('unifiedSave').dataset.editLocked;
+ const now=new Date();$('date').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+ $('unifiedCourseName').value='';$('place').value='';$('courseListPicker').value='';$('savedCourses').value='';
+ $('manualDistance').value='';$('manualMinutes').value='';$('notes').value='';$('photo').value='';photoData='';$('extraDetails').open=false;
+ $('distance').type='text';$('distance').value='0.00 km';$('distance').disabled=true;$('duration').type='text';$('duration').value='00:00:00';$('duration').disabled=true;
+ $('editSummary').hidden=true;$('editSummary').style.display='none';$('updateSummary').hidden=true;$('updateSummary').style.display='none';$('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ routePoints=[];matchedRoutePoints=[];stops=[];plannedPoints=[];plannedRouteHidden=false;plannedLine.setStyle({opacity:1});$('clearPlannedRoute').textContent='予定ルートを非表示';routeLine.setLatLngs([]);plannedLine.setLatLngs([]);
+ routeMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers.forEach(m=>map.removeLayer(m));stopMarkers=[];
+ if(gpsState==='idle')setMeasurementPanelsCollapsed(false);
+ setGpsButtons();$('gpsStatus').textContent='GPS記録は停止中です。';
+ updateTopPlannedValues(null);renderCourseHistory('');refreshMap({fitView:false});updateStats();updateCourseNameHighlight();syncDataRegisterButton();
+ $('courseStatus').textContent='画面をクリアしました。保存済みの記録・コースは残っています。';
+};
+</script>
 </body></html>
 <style>
 /* モバイルの入力欄がWRAPからはみ出さないようにする */
