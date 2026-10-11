@@ -5,14 +5,14 @@
 <title>サイクルノート - GPS対応</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;color:#1f2937;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}header{background:#123b35;color:white;padding:22px max(16px,calc((100% - 980px)/2))}header h1{margin:0;font-size:1.45rem}header p{margin:6px 0 0;color:#d4e7df}.wrap{max-width:980px;margin:20px auto;padding:0 14px;display:grid;gap:16px}.panel{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 2px 8px #0f172a0a}.panel h2{font-size:1.05rem;margin:0 0 14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#f1f7f4;padding:12px;border-radius:12px}.stat small{display:block;color:#52645e}.stat strong{font-size:1.25rem}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:10px;padding:11px 15px;font:inherit;font-weight:650;cursor:pointer;background:#176b55;color:white}button.secondary{background:#e8efec;color:#21483d}button.danger{background:#a53b3b}button:disabled{opacity:.45;cursor:not-allowed}label{display:block;font-size:.9rem;font-weight:600;margin:10px 0 5px}input,textarea,select{width:100%;font:inherit;border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:white}textarea{min-height:80px;resize:vertical}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}#map{height:330px;border-radius:12px;background:#e7ece8}.hint{font-size:.86rem;color:#64748b;line-height:1.6}.record{border-top:1px solid #e2e8f0;padding:14px 0}.record:first-child{border-top:0}.record h3{margin:0 0 5px;font-size:1rem}.record p{margin:5px 0;white-space:pre-wrap}.record img{max-width:180px;max-height:130px;object-fit:cover;border-radius:8px;margin-top:8px}.empty{color:#64748b}.record-meta{font-size:.87rem;color:#52645e}.status{font-size:.9rem;color:#176b55;margin-top:8px;min-height:1.4em}@media(min-width:760px){.wrap{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}@media(max-width:520px){.fields{grid-template-columns:1fr}.stats strong{font-size:1.05rem}#map{height:270px}}
+:root{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;color:#1f2937;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}header{background:#123b35;color:white;padding:22px max(16px,calc((100% - 980px)/2))}header h1{margin:0;font-size:1.45rem}header p{margin:6px 0 0;color:#d4e7df}.wrap{max-width:980px;margin:20px auto;padding:0 14px;display:grid;gap:16px}.panel{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 2px 8px #0f172a0a}.panel h2{font-size:1.05rem;margin:0 0 14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#f1f7f4;padding:12px;border-radius:12px}.stat small{display:block;color:#52645e}.stat strong{font-size:1.25rem}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:10px;padding:11px 15px;font:inherit;font-weight:650;cursor:pointer;background:#176b55;color:white}button.secondary{background:#e8efec;color:#21483d}button.danger{background:#a53b3b}button:disabled{opacity:.45;cursor:not-allowed}label{display:block;font-size:.9rem;font-weight:600;margin:10px 0 5px}input,textarea,select{width:100%;font:inherit;border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:white}textarea{min-height:80px;resize:vertical}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}#map{height:330px;border-radius:12px;background:#e7ece8}.current-location-icon{background:transparent;border:0}.current-location-icon .arrow{width:0;height:0;margin:-18px 0 0 -9px;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid #1685ff;filter:drop-shadow(0 1px 2px #333);transform-origin:50% 100%}.current-location-icon .dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border:3px solid white;border-radius:50%;background:#1685ff;box-shadow:0 0 0 2px #1685ff}.hint{font-size:.86rem;color:#64748b;line-height:1.6}.record{border-top:1px solid #e2e8f0;padding:14px 0}.record:first-child{border-top:0}.record h3{margin:0 0 5px;font-size:1rem}.record p{margin:5px 0;white-space:pre-wrap}.record img{max-width:180px;max-height:130px;object-fit:cover;border-radius:8px;margin-top:8px}.empty{color:#64748b}.record-meta{font-size:.87rem;color:#52645e}.status{font-size:.9rem;color:#176b55;margin-top:8px;min-height:1.4em}@media(min-width:760px){.wrap{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}@media(max-width:520px){.fields{grid-template-columns:1fr}.stats strong{font-size:1.05rem}#map{height:270px}}
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
 <section class="panel wide"><h2>走行記録</h2><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong></div></div><p class="hint">GPSで走行ルートを記録するか、距離・時間を手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
 <div class="actions"><button type="button" id="gpsStart">GPS記録を開始</button><button type="button" id="gpsPause" class="secondary" disabled>一時停止</button><button type="button" id="gpsResume" class="secondary" disabled>記録を再開</button><button type="button" id="gpsStop" class="danger" disabled>記録を終了</button></div>
 <div id="gpsStatus" class="status" aria-live="polite">GPS記録は停止中です。</div></section>
-<section class="panel"><h2>地図・ルート</h2><div id="map"></div><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
+<section class="panel"><h2>地図・ルート</h2><div id="map"></div><p id="routeEstimate" class="status">距離と所要時間の目安：ルート記録を始めると表示します（平均15km/hで概算）。</p><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
 <section class="panel"><h2>記録を保存</h2><form id="rideForm"><div class="fields"><div><label for="date">日付</label><input id="date" type="date" required></div><div><label for="place">場所・コース名</label><input id="place" placeholder="例：川沿いサイクリング"></div><div><label for="manualDistance">距離（km）</label><input id="manualDistance" type="number" min="0" step="0.01" placeholder="例：18.5"></div><div><label for="manualMinutes">時間（分）</label><input id="manualMinutes" type="number" min="0" step="1" placeholder="例：75"></div></div><label for="notes">感想・メモ</label><textarea id="notes" placeholder="景色、立ち寄った場所、次回行きたいところなど"></textarea><label for="photo">写真（任意）</label><input id="photo" type="file" accept="image/*"><p class="hint">この試作品の記録は、入力したブラウザ内に保存されます。別の端末との共有やバックアップはまだありません。</p><div class="actions"><button type="submit">記録を保存</button></div></form></section>
 <section class="panel"><h2>これまでの記録</h2><div id="history"><p class="empty">まだ記録はありません。最初のサイクリングを保存してみましょう。</p></div><div class="actions"><button id="export" class="secondary">記録をJSONで書き出す</button></div><p class="hint">大切な記録は時々書き出して保管してください。</p></section>
 </main>
@@ -23,6 +23,7 @@ if(typeof L==='undefined'){ $('mapLoadError').hidden=false; throw new Error('Lea
 const today=new Date();$('date').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 let routePoints=[],stops=[],routeLine=null,routeMarkers=[],stopMarkers=[],photoData='';
 const map=L.map('map').setView([35.0,136.9],8);
+let currentLocationMarker=null,lastHeading=0,matchedRoutePoints=[],matchTimer=null,matchRequestBusy=false;
 // OpenStreetMap標準タイルを利用。file:// で直接開くと403になる場合があるため、localhost経由で開いてください。
 let tileErrorCount=0;
 const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -31,11 +32,40 @@ const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
 tileLayer.on('tileerror',()=>{tileErrorCount++;if(tileErrorCount>=3){$('mapStatus').textContent='地図画像を読み込めません（403など）。HTMLをダブルクリックせず、VS CodeのLive Serverなどで http://localhost から開いてください。ルート記録機能は利用できます。';}});
 tileLayer.on('load',()=>{$('mapStatus').textContent='地図を表示しました。地図をクリックしてルートや立ち寄り先を登録できます。';});
 routeLine=L.polyline([],{color:'#16805d',weight:5}).addTo(map);
-function refreshMap(){routeLine.setLatLngs(routePoints.map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
+function refreshMap(){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap();updateStats()});
 $('undoPoint').onclick=()=>{if($('mapMode').value==='stop'&&stops.length)stops.pop();else if(routePoints.length)routePoints.pop();refreshMap();$('mapStatus').textContent='最後の点を削除しました。'};
 $('clearMap').onclick=()=>{if(!confirm('ルート点と立ち寄り先をすべて削除しますか？'))return;routePoints=[];stops=[];refreshMap();$('mapStatus').textContent='地図の点をすべて削除しました。'};
+function updateCurrentLocation(pos){
+ const lat=pos.coords.latitude,lng=pos.coords.longitude;
+ if(Number.isFinite(pos.coords.heading)) lastHeading=pos.coords.heading;
+ const icon=L.divIcon({className:'current-location-icon',html:`<div class="arrow" style="transform:rotate(${lastHeading}deg)"></div><div class="dot"></div>`,iconSize:[24,30],iconAnchor:[12,15]});
+ if(!currentLocationMarker) currentLocationMarker=L.marker([lat,lng],{icon,zIndexOffset:1000,interactive:false}).addTo(map);
+ else currentLocationMarker.setLatLng([lat,lng]).setIcon(icon);
+}
+function updateRouteEstimate(){
+ const km=gpsState!=='idle'&&gpsState!=='stopped'?gpsDistanceKm:Math.max(0,Number($('manualDistance').value)||0);
+ if(km>0){const mins=Math.round(km/15*60);$('routeEstimate').textContent=`距離の目安：${km.toFixed(2)} km ／ 所要時間の目安：約${mins<60?mins+'分':Math.floor(mins/60)+'時間'+(mins%60?mins%60+'分':'')}（平均15km/hで概算）`;}
+ else $('routeEstimate').textContent='距離と所要時間の目安：距離が計算されると表示します（平均15km/hで概算）。';
+}
+async function matchRouteToRoad(){
+ if(matchRequestBusy||routePoints.length<4)return;
+ matchRequestBusy=true;
+ try{
+  const pts=routePoints.slice(-60); // 最近の最大60点を道路に合わせる
+  const coords=pts.map(p=>`${p.lng},${p.lat}`).join(';');
+  const url=`https://router.project-osrm.org/match/v1/driving/${coords}?overview=full&geometries=geojson&steps=false&tidy=true`;
+  const response=await fetch(url); if(!response.ok)throw new Error('routing unavailable');
+  const data=await response.json();
+  if(data.code==='Ok'&&data.matchings&&data.matchings.length){
+   const coordsOut=data.matchings.flatMap(m=>m.geometry.coordinates).map(c=>({lat:c[1],lng:c[0]}));
+   if(coordsOut.length>1){matchedRoutePoints=coordsOut;routeLine.setLatLngs(matchedRoutePoints.map(p=>[p.lat,p.lng]));}
+  }
+ }catch(e){/* 通信不可ならGPSの生の軌跡をそのまま表示 */}
+ finally{matchRequestBusy=false;}
+}
+function scheduleRouteMatch(){if(matchTimer)clearTimeout(matchTimer);matchTimer=setTimeout(matchRouteToRoad,1800);}
 let gpsWatchId=null,gpsState='idle',gpsStartedAt=0,gpsElapsedMs=0,gpsLastPoint=null,gpsDistanceKm=0,gpsTimer=null;
 function formatDuration(mins){return `${Math.floor(mins/60).toString().padStart(2,'0')}:${Math.floor(mins%60).toString().padStart(2,'0')}`}
 function currentGpsMinutes(){const ms=gpsElapsedMs+(gpsState==='recording'?Date.now()-gpsStartedAt:0);return Math.floor(ms/60000)}
@@ -46,6 +76,7 @@ function updateStats(){
  $('distance').textContent=km.toFixed(2)+' km';
  $('duration').textContent=formatDuration(mins);
  $('speed').textContent=(mins>0?km/(mins/60):0).toFixed(1)+' km/h';
+  updateRouteEstimate();
  if(gpsActive){$('manualDistance').value=km.toFixed(2);$('manualMinutes').value=mins;}
 }
 $('manualDistance').addEventListener('input',updateStats);$('manualMinutes').addEventListener('input',updateStats);
@@ -66,16 +97,17 @@ function startGpsWatcher(){
  gpsWatchId=navigator.geolocation.watchPosition(pos=>{
   if(gpsState!=='recording')return;
   const p={lat:Number(pos.coords.latitude.toFixed(6)),lng:Number(pos.coords.longitude.toFixed(6))};
+  updateCurrentLocation(pos);
   if(gpsLastPoint){const delta=haversineKm(gpsLastPoint,p);if(delta>=0.003&&delta<1){gpsDistanceKm+=delta;routePoints.push(p);refreshMap();}else if(delta>=1){$('gpsStatus').textContent='位置が大きく移動したため、GPSの誤差としてこの点は距離に加算しませんでした。';}}
   else {routePoints.push(p);refreshMap();}
-  gpsLastPoint=p;map.panTo([p.lat,p.lng],{animate:true});updateStats();
+  gpsLastPoint=p;map.panTo([p.lat,p.lng],{animate:true});if(routePoints.length>=4)scheduleRouteMatch();updateStats();
   $('gpsStatus').textContent=`GPS記録中… 精度 約${Math.round(pos.coords.accuracy)}m`;
  },gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
 $('gpsStart').onclick=()=>{
  if(!navigator.geolocation){$('gpsStatus').textContent='このブラウザはGPSに対応していません。';return;}
  if(!window.isSecureContext){$('gpsStatus').textContent='GPSには安全な接続が必要です。VS CodeのLive Serverで http://localhost から開くか、HTTPSのページで利用してください。';return;}
- gpsState='recording';gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
+ gpsState='recording';gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];matchedRoutePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
 };
 $('gpsPause').onclick=()=>{if(gpsState!=='recording')return;gpsElapsedMs+=Date.now()-gpsStartedAt;gpsState='paused';stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録を一時停止しました。';updateStats();};
 $('gpsResume').onclick=()=>{if(gpsState!=='paused')return;gpsState='recording';gpsStartedAt=Date.now();setGpsButtons();$('gpsStatus').textContent='GPS記録を再開しました。';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);};
@@ -84,7 +116,7 @@ $('gpsStop').onclick=()=>{if(gpsState==='recording')gpsElapsedMs+=Date.now()-gps
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f){photoData='';return}if(f.size>4*1024*1024){alert('写真は4MB以下のものを選んでください。');$('photo').value='';photoData='';return}const reader=new FileReader();reader.onload=()=>{photoData=reader.result};reader.readAsDataURL(f)};
 function getRides(){try{return JSON.parse(localStorage.getItem('cycle-note-rides')||'[]')}catch{return []}}function saveRides(r){localStorage.setItem('cycle-note-rides',JSON.stringify(r))}
 function render(){const rides=getRides(),el=$('history');if(!rides.length){el.innerHTML='<p class="empty">まだ記録はありません。最初のサイクリングを保存してみましょう。</p>';return}el.innerHTML='';rides.slice().reverse().forEach(r=>{const d=document.createElement('article');d.className='record';const h=document.createElement('h3');h.textContent=`${r.date} — ${r.place||'サイクリング'}`;d.appendChild(h);const meta=document.createElement('div');meta.className='record-meta';const mins=Number(r.minutes)||0;meta.textContent=`${Number(r.distance||0).toFixed(2)} km ・ ${mins} 分 ・ 平均 ${mins>0?(Number(r.distance)/(mins/60)).toFixed(1):'0.0'} km/h`;d.appendChild(meta);if(r.notes){const p=document.createElement('p');p.textContent=r.notes;d.appendChild(p)}if(r.photo){const img=document.createElement('img');img.src=r.photo;img.alt='走行中の写真';d.appendChild(img)}if((r.route&&r.route.length)||(r.stops&&r.stops.length)){const b=document.createElement('button');b.className='secondary';b.textContent='ルート・立ち寄り先を地図に表示';b.onclick=()=>{routePoints=(r.route||[]).map(p=>({lat:p.lat,lng:p.lng}));stops=(r.stops||[]).map(p=>({...p}));refreshMap();$('map').scrollIntoView({behavior:'smooth',block:'center'});$('mapStatus').textContent='保存したルートと立ち寄り先を表示しています。'};d.appendChild(b)}el.appendChild(d)})}
-$('rideForm').onsubmit=e=>{e.preventDefault();const ride={date:$('date').value,place:$('place').value.trim(),distance:Number($('manualDistance').value||0),minutes:Number($('manualMinutes').value||0),notes:$('notes').value.trim(),photo:photoData,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p}))};try{const rides=getRides();rides.push(ride);saveRides(rides);render();$('place').value='';$('manualDistance').value='';$('manualMinutes').value='';$('notes').value='';$('photo').value='';photoData='';routePoints=[];stops=[];gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録は停止中です。';refreshMap();updateStats();alert('記録を保存しました！')}catch(err){alert('保存できませんでした。写真のサイズを小さくして再度お試しください。')}};
+$('rideForm').onsubmit=e=>{e.preventDefault();const ride={date:$('date').value,place:$('place').value.trim(),distance:Number($('manualDistance').value||0),minutes:Number($('manualMinutes').value||0),notes:$('notes').value.trim(),photo:photoData,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p}))};try{const rides=getRides();rides.push(ride);saveRides(rides);render();$('place').value='';$('manualDistance').value='';$('manualMinutes').value='';$('notes').value='';$('photo').value='';photoData='';routePoints=[];stops=[];matchedRoutePoints=[];gpsState='idle';gpsElapsedMs=0;gpsDistanceKm=0;gpsLastPoint=null;stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録は停止中です。';refreshMap();updateStats();alert('記録を保存しました！')}catch(err){alert('保存できませんでした。写真のサイズを小さくして再度お試しください。')}};
 $('export').onclick=()=>{const blob=new Blob([JSON.stringify(getRides(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cycle-note-backup.json';a.click();URL.revokeObjectURL(url)};
 render();updateStats();setTimeout(()=>map.invalidateSize(),250);
 // 起動時に現在地を取得し、地図の中心を現在地へ移動（走行記録は開始しない）
@@ -94,7 +126,7 @@ function centerMapOnCurrentLocation(){
  $('mapStatus').textContent='現在地を取得しています…';
  navigator.geolocation.getCurrentPosition(pos=>{
   const lat=pos.coords.latitude,lng=pos.coords.longitude;
-  map.setView([lat,lng],15);
+  updateCurrentLocation(pos);map.setView([lat,lng],8);
   $('mapStatus').textContent=`現在地を地図の中心に表示しました（精度 約${Math.round(pos.coords.accuracy)}m）。走行記録は開始していません。`;
  },err=>{
   const messages={1:'現在地を表示するには、ブラウザで位置情報を許可してください。',2:'現在地を取得できませんでした。屋外などで再読み込みしてお試しください。',3:'現在地の取得がタイムアウトしました。'};
