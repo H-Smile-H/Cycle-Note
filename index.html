@@ -126,7 +126,7 @@ function centerMapOnCurrentLocation(){
  $('mapStatus').textContent='現在地を取得しています…';
  navigator.geolocation.getCurrentPosition(pos=>{
   const lat=pos.coords.latitude,lng=pos.coords.longitude;
-  updateCurrentLocation(pos);map.setView([lat,lng],8);
+  updateCurrentLocation(pos);map.setView([lat,lng],15);
   $('mapStatus').textContent=`現在地を地図の中心に表示しました（精度 約${Math.round(pos.coords.accuracy)}m）。走行記録は開始していません。`;
  },err=>{
   const messages={1:'現在地を表示するには、ブラウザで位置情報を許可してください。',2:'現在地を取得できませんでした。屋外などで再読み込みしてお試しください。',3:'現在地の取得がタイムアウトしました。'};
