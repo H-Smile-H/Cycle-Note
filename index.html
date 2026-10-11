@@ -6,10 +6,26 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;color:#1f2937;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}header{background:#123b35;color:white;padding:22px max(16px,calc((100% - 980px)/2))}header h1{margin:0;font-size:1.45rem}header p{margin:6px 0 0;color:#d4e7df}.wrap{max-width:980px;margin:20px auto;padding:0 14px;display:grid;gap:16px}.panel{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 2px 8px #0f172a0a}.panel h2{font-size:1.05rem;margin:0 0 14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#f1f7f4;padding:12px;border-radius:12px}.stat small{display:block;color:#52645e}.stat strong{font-size:1.25rem}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:10px;padding:11px 15px;font:inherit;font-weight:650;cursor:pointer;background:#176b55;color:white}button.secondary{background:#e8efec;color:#21483d}button.danger{background:#a53b3b}button:disabled{opacity:.45;cursor:not-allowed}label{display:block;font-size:.9rem;font-weight:600;margin:10px 0 5px}input,textarea,select{width:100%;font:inherit;border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:white}textarea{min-height:80px;resize:vertical}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}#map{height:330px;border-radius:12px;background:#e7ece8}.current-location-icon{background:transparent;border:0}.current-location-icon .arrow{width:0;height:0;margin:-18px 0 0 -9px;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid #1685ff;filter:drop-shadow(0 1px 2px #333);transform-origin:50% 100%}.current-location-icon .dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border:3px solid white;border-radius:50%;background:#1685ff;box-shadow:0 0 0 2px #1685ff}.hint{font-size:.86rem;color:#64748b;line-height:1.6}.inline-estimate{display:inline-block;margin-left:8px;font-size:.82rem;font-weight:500;color:#176b55}.form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.form-actions button{flex:1 1 150px}.planned-actions[hidden]{display:none!important}.record{border-top:1px solid #e2e8f0;padding:14px 0}.record:first-child{border-top:0}.record h3{margin:0 0 5px;font-size:1rem}.record p{margin:5px 0;white-space:pre-wrap}.record img{max-width:180px;max-height:130px;object-fit:cover;border-radius:8px;margin-top:8px}.empty{color:#64748b}.record-meta{font-size:.87rem;color:#52645e}.top-button{position:fixed;right:18px;bottom:18px;z-index:3000;border-radius:999px;box-shadow:0 3px 12px #0003;display:none}.top-button.visible{display:block}.stats-edit{display:none}.stats-edit.open{display:block}.status{font-size:.9rem;color:#176b55;margin-top:8px;min-height:1.4em}@media(min-width:760px){.wrap{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}@media(max-width:520px){.fields{grid-template-columns:1fr}.stats strong{font-size:1.05rem}#map{height:270px}}
+
+/* Revised unified summary controls */
+#rideForm .fields>div:has(#savedCourses),#rideForm .fields>div:has(#place),
+#rideForm .fields>div:has(#manualDistance),#rideForm .fields>div:has(#manualMinutes),
+#rideForm .fields>div:has(#averageSpeedAuto){display:none!important}
+#topCoursePicker{display:grid;grid-template-columns:1fr;gap:5px;margin:12px 0}
+#topCoursePicker label{margin-bottom:0}
+#summaryEditPanel{display:none;margin-top:12px;padding:12px;background:#f1f7f4;border-radius:12px}
+#summaryEditPanel.open{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#summaryEditPanel input{min-width:0}
+.stat .estimate{display:block;color:#176b55;font-size:.82rem;margin-top:4px}
+@media(max-width:520px){#summaryEditPanel.open{grid-template-columns:1fr}}
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
-<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong></div></div><p class="hint">GPSで走行ルートを記録するか、距離・時間を手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
+<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong></div></div>
+<div id="topCoursePicker"><label for="unifiedCourseName">コース名（選択または入力）</label><input id="unifiedCourseName" list="courseNameOptions" placeholder="コース名を選ぶ／入力"><datalist id="courseNameOptions"></datalist></div>
+<div id="summaryEditPanel"><div><label for="topDistanceInput">距離（km）</label><input id="topDistanceInput" type="number" min="0" step="0.01"></div><div><label for="topMinutesInput">走行時間（分）</label><input id="topMinutesInput" type="number" min="0" step="1"></div></div>
+<div class="stats" id="estimateStats"><div class="stat"><small>予定距離</small><strong id="topPlannedDistance">--</strong></div><div class="stat"><small>予想時間</small><strong id="topPlannedTime">--</strong></div></div>
+<p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
 <div class="actions"><button type="button" id="gpsStart">GPS記録を開始</button><button type="button" id="gpsPause" class="secondary" disabled>一時停止</button><button type="button" id="gpsResume" class="secondary" disabled>記録を再開</button><button type="button" id="gpsStop" class="danger" disabled>記録を終了</button></div>
 <div id="gpsStatus" class="status" aria-live="polite">GPS記録は停止中です。</div></section>
 <section class="panel"><h2>地図・ルート</h2><div id="map"></div><p id="routeEstimate" class="status">距離と所要時間の目安：ルート記録を始めると表示します（平均15km/hで概算）。</p><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
@@ -201,7 +217,7 @@ dataPanel.remove();
 // 予定・実績を同じプルダウンで選ぶ。予定はコース保存、走行済み/数値入力は実績保存。
 $('editSummary').onclick=()=>{const area=$('editStatsArea');area.classList.toggle('open');area.style.display=area.classList.contains('open')?'block':'none';$('manualDistance').scrollIntoView({behavior:'smooth',block:'center'});};
 $('unifiedSave').onclick=()=>{
- const name=$('place').value.trim(); if(!name){alert('コース名を入力してください。');return}
+ const name=$('unifiedCourseName').value.trim()||$('place').value.trim(); $('place').value=name; if(!name){alert('コース名を入力してください。');return}
  const hasRoute=routePoints.length>=2||plannedPoints.length>=2;
  const hasRide=gpsState==='stopped'||gpsState==='paused'||Number($('manualDistance').value)>0||Number($('manualMinutes').value)>0;
  if(!hasRide && hasRoute){
@@ -221,6 +237,47 @@ $('unifiedDelete').onclick=()=>{
 };
 window.addEventListener('scroll',()=> $('topButton').classList.toggle('visible',window.scrollY>250));
 $('topButton').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+
+
+// Unified top controls: single course field (datalist), editable distance/time in the top summary.
+const oldCourseSelect=$('savedCourses'), oldPlaceInput=$('place');
+function refreshUnifiedCourseOptions(){
+ const courses=getCourses();const names=[...new Set(courses.map(c=>c.name).filter(Boolean))];
+ $('courseNameOptions').innerHTML=names.map(n=>`<option value="${escapeHtml(n)}"></option>`).join('');
+ oldCourseSelect.innerHTML='<option value="">新規作成／手入力</option>'+courses.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+refreshUnifiedCourseOptions();
+$('unifiedCourseName').addEventListener('input',()=>{
+ const name=$('unifiedCourseName').value.trim();oldPlaceInput.value=name;
+ const course=getCourses().find(c=>c.name===name);
+ if(course){oldCourseSelect.value=course.id;showPlannedCourse(course,false);updateTopPlannedValues(course);}
+ else {oldCourseSelect.value='';}
+});
+oldCourseSelect.addEventListener('change',()=>{
+ const c=getCourses().find(x=>x.id===oldCourseSelect.value);if(!c)return;
+ $('unifiedCourseName').value=c.name;oldPlaceInput.value=c.name;showPlannedCourse(c,false);updateTopPlannedValues(c);
+});
+function updateTopPlannedValues(c){
+ const pts=(c&&c.route)||plannedPoints||[];
+ const km=pts.length>1?pts.slice(1).reduce((sum,p,i)=>sum+haversineKm(pts[i],p),0):0;
+ $('topPlannedDistance').textContent=km>0?km.toFixed(2)+' km':'--';
+ const mins=km>0?Math.round(km/15*60):0;
+ $('topPlannedTime').textContent=mins?humanMinutes(mins):'--';
+ $('plannedDistanceLabel').textContent=km>0?`予定 ${km.toFixed(2)} km`:'';
+ $('plannedTimeLabel').textContent=mins?`予定 ${humanMinutes(mins)}`:'';
+ $('courseEstimate').textContent=km>0?`予定距離 ${km.toFixed(2)} km ／ 予想時間 ${humanMinutes(mins)}（平均15km/hで概算）`:'予定ルートは未選択です。';
+}
+$('editSummary').onclick=()=>{
+ const panel=$('summaryEditPanel');panel.classList.toggle('open');
+ $('topDistanceInput').value=$('manualDistance').value||'';
+ $('topMinutesInput').value=$('manualMinutes').value||'';
+};
+$('topDistanceInput').addEventListener('input',()=>{$('manualDistance').value=$('topDistanceInput').value;updateStats()});
+$('topMinutesInput').addEventListener('input',()=>{$('manualMinutes').value=$('topMinutesInput').value;updateStats()});
+const oldSaveCourse=$('saveCourse').onclick;
+$('saveCourse').onclick=()=>{if(oldSaveCourse)oldSaveCourse();setTimeout(refreshUnifiedCourseOptions,0)};
+const oldDeleteCourse=$('deleteCourse').onclick;
+$('deleteCourse').onclick=()=>{if(oldDeleteCourse)oldDeleteCourse();setTimeout(refreshUnifiedCourseOptions,0)};
 
 centerMapOnCurrentLocation();
 </script></body></html>
