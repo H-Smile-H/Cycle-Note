@@ -516,3 +516,15 @@ centerMapOnCurrentLocation();
 #date::-webkit-calendar-picker-indicator {margin:0 2px 0 4px}
 .hint {display:none}
 </style>
+
+<style>
+/* PCでは従来どおり中央の最大幅を維持。スマホだけ画面幅に合わせる */
+@media (min-width: 760px) {
+  .wrap {max-width:1200px !important;width:calc(100% - 32px) !important;margin-left:auto !important;margin-right:auto !important}
+  .panel {max-width:100% !important}
+}
+@media (max-width: 759px) {
+  .wrap {width:calc(100% - 20px) !important;max-width:none !important}
+  .panel {width:100% !important;min-width:0 !important}
+}
+</style>
