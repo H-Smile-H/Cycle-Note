@@ -593,7 +593,72 @@ const originalRenderCourseHistory=renderCourseHistory;
 renderCourseHistory=function(name){originalRenderCourseHistory(name);const rides=getRides().filter(r=>String(r.place||'').trim()===String(name||'').trim()).slice().reverse().slice(0,5);document.querySelectorAll('#courseHistory .record').forEach((item,i)=>{if(item.querySelector('.record-edit'))return;const r=rides[i];if(!r)return;const b=document.createElement('button');b.type='button';b.className='secondary record-edit';b.textContent='編集';b.style.cssText='float:right;margin-top:-2.5em;margin-right:64px;position:relative;z-index:2;padding:6px 14px;font-size:.9em';b.onclick=e=>{e.stopPropagation();loadRideForEditing(r)};item.appendChild(b);});};
 $('unifiedSave').textContent='データ登録';
 refreshUnifiedCourseOptions();render();renderCourseHistory($('unifiedCourseName').value);syncDataRegisterButton();
-</script></body></html>
+</script>
+<script>
+// 修正：記録カードの編集・削除ボタンは本文と重ならない独立した行に配置
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.record-delete,.record-edit').forEach(b=>{
+    b.style.cssText='';
+  });
+});
+// 「コース削除」を「コース登録」の横へ移動
+(function(){
+ const deleteBtn=$('unifiedDelete'), registerBtn=$('registerCourseMode');
+ if(deleteBtn&&registerBtn){
+   const actions=registerBtn.parentElement;
+   actions.appendChild(deleteBtn);
+   actions.style.display='flex';actions.style.flexWrap='wrap';actions.style.gap='8px';
+   registerBtn.style.flex='1 1 140px';deleteBtn.style.flex='1 1 140px';
+ }
+})();
+// 編集時は上部の距離・走行時間も直接編集可能にする
+const baseLoadRideForEditing=loadRideForEditing;
+loadRideForEditing=function(r){
+ baseLoadRideForEditing(r);
+ savedMetricValues={distance:$('distance').value,duration:$('duration').value};
+ $('distance').disabled=false;$('distance').type='number';$('distance').min='0';$('distance').step='0.01';
+ $('distance').value=(Number(r.distance)||0).toFixed(2);
+ $('duration').disabled=false;$('duration').type='text';
+ $('duration').value=formatMinutesAsClock(Number(r.minutes)||0);
+ $('editSummary').hidden=true;$('editSummary').style.display='none';
+ $('updateSummary').hidden=false;$('updateSummary').style.display='inline-flex';
+ $('cancelSummary').hidden=false;$('cancelSummary').style.display='inline-flex';
+ $('duration').inputMode='numeric';
+ $('distance').focus();
+};
+// 上部の編集値を保存時に正しく反映（HH:MM または HH:MM:SS）
+$('updateSummary').onclick=()=>{
+ const km=Math.max(0,parseFloat($('distance').value)||0);
+ const raw=$('duration').value.trim();
+ let mins=0;
+ if(raw.includes(':')){
+   const parts=raw.split(':').map(v=>Math.max(0,Number(v)||0));
+   if(parts.length>=3) mins=parts[0]*60+parts[1]+parts[2]/60;
+   else mins=(parts[0]||0)*60+(parts[1]||0);
+ }else mins=Math.max(0,Number(raw)||0);
+ $('manualDistance').value=km.toFixed(2);$('manualMinutes').value=mins;
+ $('distance').type='text';$('distance').value=km.toFixed(2)+' km';$('distance').disabled=true;
+ $('duration').value=formatDuration(mins);$('duration').disabled=true;
+ $('editSummary').hidden=false;$('editSummary').style.display='inline-flex';
+ $('updateSummary').hidden=true;$('updateSummary').style.display='none';
+ $('cancelSummary').hidden=true;$('cancelSummary').style.display='none';
+ updateStats();
+};
+// 既存のfloat配置を解除して、ボタンをカード本文の下に並べる
+const recordButtonLayoutStyle=document.createElement('style');
+recordButtonLayoutStyle.textContent=`
+.record-delete,.record-edit{
+ float:none!important;position:static!important;z-index:auto!important;
+ margin:10px 8px 0 0!important;display:inline-block!important;
+ vertical-align:middle;clear:none!important;
+}
+.record h3{padding-right:0!important;margin-bottom:8px}
+.record-meta{clear:both}
+#registerCourseMode,#unifiedDelete{min-height:44px}
+`;
+document.head.appendChild(recordButtonLayoutStyle);
+</script>
+</body></html>
 <style>
 /* モバイルの入力欄がWRAPからはみ出さないようにする */
 .wrap, .panel, .fields, .fields > div {min-width:0;max-width:100%}
