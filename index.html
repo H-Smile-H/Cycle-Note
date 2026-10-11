@@ -827,6 +827,25 @@ $('clearAllScreen').onclick = function() {
 
 <style>#editSummary{display:none!important}</style>
 <style>
-#courseListPicker{background:#fff3bf!important;border-color:#d9a400!important;color:#473900}
+#courseListPicker{background:#fff!important;border-color:initial!important;color:inherit}
+#courseListPicker.placeholder-selected{background:#fff3bf!important;border-color:#d9a400!important;color:#473900!important}
 #registerRoute{background:#176b55!important;color:#fff!important;width:100%;}
 </style>
+
+<script>
+// 未選択の「コースを選択」だけを淡い黄色にし、選択後は必ず白に戻す
+(()=>{
+ const picker=document.getElementById('courseListPicker'); if(!picker)return;
+ const paint=()=>{
+  const empty=picker.value==='';
+  picker.classList.toggle('placeholder-selected',empty);
+  picker.style.setProperty('background-color',empty?'#fff3bf':'#ffffff','important');
+  picker.style.setProperty('border-color',empty?'#d9a400':'initial','important');
+  picker.style.setProperty('color',empty?'#473900':'inherit','important');
+ };
+ picker.addEventListener('change',paint);
+ picker.addEventListener('input',paint);
+ new MutationObserver(paint).observe(picker,{childList:true,subtree:true});
+ paint();
+})();
+</script>
