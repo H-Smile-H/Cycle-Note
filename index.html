@@ -64,7 +64,7 @@ input#duration, input#distance {font-size:1.25em;text-align:left;color:#123b32!i
 <section class="panel wide"><h2>走行記録を保存</h2><form id="rideForm">
 <div class="fields">
 <div><label for="date">日付</label><input id="date" type="date" required></div>
-<div><label for="courseListPicker">コース</label><div class="course-picker"><select id="courseListPicker" aria-label="コース選択"><option value="">コースを選択</option></select><input id="unifiedCourseName" autocomplete="off" placeholder="新しいコース名を入力" aria-label="コース名" hidden><div id="courseNameOptions" class="course-options" hidden></div></div><div class="actions" style="margin-top:8px"><button type="button" id="registerCourseMode" class="secondary">コース登録</button><button type="button" id="saveNewCourse" class="secondary" hidden>このコースを登録</button></div></div>
+<div><label for="courseListPicker">コース</label><div class="course-picker"><select id="courseListPicker" aria-label="コース選択"><option value="">コースを選択</option></select><input id="unifiedCourseName" autocomplete="off" placeholder="新しいコース名を入力" aria-label="コース名" hidden><div id="courseNameOptions" class="course-options" hidden></div></div><div class="actions" style="margin-top:8px"><button type="button" id="registerCourseMode" class="secondary">新規コース入力</button><button type="button" id="saveNewCourse" class="secondary" hidden>このコースを登録</button></div></div>
 <div hidden><label for="savedCourses">保存済みコース</label><select id="savedCourses"><option value="">コースを選択／手入力</option></select><label for="place">コース名</label><input id="place"></div>
 <div><label for="manualDistance">実走距離（km） <span id="plannedDistanceLabel" class="inline-estimate"></span></label><input id="manualDistance" type="number" min="0" step="0.01" placeholder="GPS計測または手入力"></div>
 <div><label for="manualMinutes">走行時間（分） <span id="plannedTimeLabel" class="inline-estimate"></span></label><input id="manualMinutes" type="number" min="0" step="1" placeholder="GPS計測または手入力"></div>
@@ -421,7 +421,7 @@ let courseRegistrationMode=false;
 $('registerCourseMode').onclick=()=>{
  courseRegistrationMode=!courseRegistrationMode;
  $('courseListPicker').hidden=courseRegistrationMode;$('unifiedCourseName').hidden=!courseRegistrationMode;
- $('registerCourseMode').textContent=courseRegistrationMode?'コース選択に戻る':'コース登録';
+ $('registerCourseMode').textContent=courseRegistrationMode?'コース選択に戻る':'新規コース入力';
  if(courseRegistrationMode){$('unifiedCourseName').value='';oldPlaceInput.value='';updateCourseNameHighlight();$('unifiedCourseName').focus();$('unifiedDelete').disabled=true;}
  else {const picker=$('courseListPicker');const opt=picker.selectedOptions[0];$('unifiedCourseName').value=picker.value&&opt?opt.textContent:'';oldPlaceInput.value=$('unifiedCourseName').value;updateCourseNameHighlight();$('unifiedDelete').disabled=!picker.value;}
 };
