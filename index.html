@@ -15,10 +15,10 @@
 @media(max-width:520px){#rideForm .fields{grid-template-columns:1fr}}
 .stat .estimate{display:block;color:#176b55;font-size:.82rem;margin-top:4px}
 @media(max-width:520px){#summaryEditPanel.open{grid-template-columns:1fr}}
-</style></head>
+#summaryEditActions{display:flex;gap:8px;align-items:center} #summaryEditActions button[hidden]{display:none!important}\n</style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
-<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong><input id="topDistanceInput" class="inline-edit" type="number" min="0" step="0.01" aria-label="実測距離（km）" hidden><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong><input id="topMinutesInput" class="inline-edit" type="number" min="0" step="1" aria-label="実測走行時間（分）" hidden><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
+<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><div id="summaryEditActions"><button type="button" id="editSummary" class="secondary">編集</button><button type="button" id="updateSummary" class="primary" hidden>更新</button><button type="button" id="cancelSummary" class="secondary" hidden>キャンセル</button></div></div><div class="stats"><div class="stat"><small>距離</small><strong id="distance">0.00 km</strong><input id="topDistanceInput" class="inline-edit" type="number" min="0" step="0.01" aria-label="実測距離（km）" hidden><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><strong id="duration">00:00</strong><input id="topMinutesInput" class="inline-edit" type="number" min="0" step="1" aria-label="実測走行時間（分）" hidden><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
 
 
 <p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
@@ -265,21 +265,27 @@ function updateTopPlannedValues(c){
  $('courseEstimate').textContent=km>0?`予定距離 ${km.toFixed(2)} km ／ 予想時間 ${humanMinutes(mins)}（平均15km/hで概算）`:'予定ルートは未選択です。';
 }
 $('editSummary').onclick=()=>{
- const editing=$('topDistanceInput').hidden;
- $('topDistanceInput').hidden=!editing;$('topMinutesInput').hidden=!editing;
- $('distance').hidden=editing;$('duration').hidden=editing;
- if(editing){
-  $('topDistanceInput').value=parseFloat($('distance').textContent)||parseFloat($('manualDistance').value)||0;
-  $('topMinutesInput').value=parseFloat($('manualMinutes').value)||0;
-  $('topDistanceInput').focus();
- }else{
-  $('manualDistance').value=$('topDistanceInput').value;
-  $('manualMinutes').value=$('topMinutesInput').value;
-  updateStats();
- }
+ $('topDistanceInput').value=parseFloat($('distance').textContent)||parseFloat($('manualDistance').value)||0;
+ $('topMinutesInput').value=parseFloat($('manualMinutes').value)||0;
+ $('editSummary').hidden=true;$('updateSummary').hidden=false;$('cancelSummary').hidden=false;
+ $('distance').hidden=true;$('duration').hidden=true;
+ $('topDistanceInput').hidden=false;$('topMinutesInput').hidden=false;
+ $('topDistanceInput').focus();
 };
-$('topDistanceInput').addEventListener('input',()=>{$('manualDistance').value=$('topDistanceInput').value;updateStats();});
-$('topMinutesInput').addEventListener('input',()=>{$('manualMinutes').value=$('topMinutesInput').value;updateStats();});
+$('updateSummary').onclick=()=>{
+ $('manualDistance').value=$('topDistanceInput').value;
+ $('manualMinutes').value=$('topMinutesInput').value;
+ $('topDistanceInput').hidden=true;$('topMinutesInput').hidden=true;
+ $('distance').hidden=false;$('duration').hidden=false;
+ $('editSummary').hidden=false;$('updateSummary').hidden=true;$('cancelSummary').hidden=true;
+ updateStats();
+};
+$('cancelSummary').onclick=()=>{
+ $('topDistanceInput').hidden=true;$('topMinutesInput').hidden=true;
+ $('distance').hidden=false;$('duration').hidden=false;
+ $('editSummary').hidden=false;$('updateSummary').hidden=true;$('cancelSummary').hidden=true;
+ updateStats();
+};
 const oldSaveCourse=$('saveCourse').onclick;
 $('saveCourse').onclick=()=>{if(oldSaveCourse)oldSaveCourse();setTimeout(refreshUnifiedCourseOptions,0)};
 const oldDeleteCourse=$('deleteCourse').onclick;
