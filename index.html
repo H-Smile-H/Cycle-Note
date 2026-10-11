@@ -47,7 +47,7 @@ input#duration, input#distance {
 .course-options button{display:block;width:100%;padding:10px 12px;text-align:left;border:0;border-radius:0;background:#fff;color:#1f2937}
 .course-options button:hover,.course-options button:focus{background:#e7f5ef}
 .course-options[hidden]{display:none!important}
-input#duration, input#distance {font-size:1.25em;text-align:left}
+input#duration, input#distance {font-size:1.25em;text-align:left;color:#123b32!important;-webkit-text-fill-color:#123b32!important;opacity:1}
 @media (max-width: 520px) {
   input#duration, input#distance {font-size:1.05rem;}
 }
@@ -247,11 +247,11 @@ function startGpsWatcher(){
   const p={lat:Number(pos.coords.latitude.toFixed(6)),lng:Number(pos.coords.longitude.toFixed(6))};
   updateCurrentLocation(pos);
   if(!gpsLastPoint){
-    routePoints.push(p);gpsLastPoint=p;refreshMap({fitView:false});
+    routePoints.push(p);gpsLastPoint=p;lastGpsAcceptedAt=Date.now();refreshMap({fitView:false});
   }else{
     const delta=haversineKm(gpsLastPoint,p);
     if(delta>=0.001&&delta<0.5){
-      gpsDistanceKm+=delta;routePoints.push(p);gpsLastPoint=p;refreshMap({fitView:false});
+      gpsDistanceKm+=delta;routePoints.push(p);gpsLastPoint=p;lastGpsAcceptedAt=Date.now();refreshMap({fitView:false});
     }else if(delta>=0.5){
       $('gpsStatus').textContent='位置が大きく移動したため、この点は距離に加算しませんでした。';
     }
@@ -261,14 +261,41 @@ function startGpsWatcher(){
   $('gpsStatus').textContent=`GPS記録中… 精度 約${Math.round(pos.coords.accuracy)}m`;
  },gpsError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&gpsState==='recording')$('gpsStatus').textContent='バックグラウンド中です。iPhoneではGPS記録が一時停止する場合があります。画面を戻して記録状態を確認してください。';});
+let lastGpsAcceptedAt=0;
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden&&gpsState==='recording'){
+  lastGpsAcceptedAt=Date.now();
+  $('gpsStatus').textContent='バックグラウンド中です。復帰時に現在地を取得し、短い空白区間を概算で補います。';
+  return;
+ }
+ if(!document.hidden&&gpsState==='recording'&&navigator.geolocation){
+  const resumedAt=Date.now();
+  navigator.geolocation.getCurrentPosition(pos=>{
+   if(gpsState!=='recording')return;
+   const accuracy=Number(pos.coords.accuracy)||999;
+   const p={lat:Number(pos.coords.latitude.toFixed(6)),lng:Number(pos.coords.longitude.toFixed(6))};
+   updateCurrentLocation(pos);
+   const gapMs=lastGpsAcceptedAt?resumedAt-lastGpsAcceptedAt:0;
+   if(accuracy<=60&&gpsLastPoint&&gapMs>0&&gapMs<=10*60*1000){
+    const delta=haversineKm(gpsLastPoint,p);
+    if(delta>=0.001&&delta<=2){
+     gpsDistanceKm+=delta;routePoints.push(p);gpsLastPoint=p;refreshMap({fitView:false});
+     if(routePoints.length>=4)scheduleRouteMatch();
+     $('gpsStatus').textContent=`記録を再開しました。中断中の距離を概算で ${delta.toFixed(2)} km 加算しました（GPS精度 約${Math.round(accuracy)}m）。`;
+    }else $('gpsStatus').textContent='記録を再開しました。中断中の距離は加算できませんでした。';
+   }else $('gpsStatus').textContent='記録を再開しました。中断時間が長いかGPS精度が低いため、空白区間は補正していません。';
+   if(gpsFollowMap)map.panTo([p.lat,p.lng],{animate:false});
+   updateStats();
+  },()=>{$('gpsStatus').textContent='画面に戻りましたが、現在地を再取得できません。GPSの許可・電波状況を確認してください。';},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+ }
+});
 $('gpsStart').onclick=()=>{
  if(!navigator.geolocation){$('gpsStatus').textContent='このブラウザはGPSに対応していません。';return;}
  if(!window.isSecureContext){$('gpsStatus').textContent='GPSには安全な接続が必要です。VS CodeのLive Serverで http://localhost から開くか、HTTPSのページで利用してください。';return;}
- gpsState='recording';gpsFollowMap=true;gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];matchedRoutePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
+ gpsState='recording';gpsFollowMap=true;lastGpsAcceptedAt=Date.now();gpsStartedAt=Date.now();gpsElapsedMs=0;gpsLastPoint=null;gpsDistanceKm=0;routePoints=[];matchedRoutePoints=[];refreshMap();$('mapMode').value='route';setGpsButtons();$('gpsStatus').textContent='位置情報の許可を確認しています…';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);updateStats();
 };
 $('gpsPause').onclick=()=>{if(gpsState!=='recording')return;gpsElapsedMs+=Date.now()-gpsStartedAt;gpsState='paused';stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録を一時停止しました。';updateStats();};
-$('gpsResume').onclick=()=>{if(gpsState!=='paused')return;gpsState='recording';gpsFollowMap=true;gpsStartedAt=Date.now();setGpsButtons();$('gpsStatus').textContent='GPS記録を再開しました。';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);};
+$('gpsResume').onclick=()=>{if(gpsState!=='paused')return;gpsState='recording';gpsFollowMap=true;lastGpsAcceptedAt=Date.now();gpsStartedAt=Date.now();setGpsButtons();$('gpsStatus').textContent='GPS記録を再開しました。';startGpsWatcher();gpsTimer=setInterval(updateStats,1000);};
 $('gpsStop').onclick=()=>{if(gpsState==='recording')gpsElapsedMs+=Date.now()-gpsStartedAt;gpsState='stopped';stopGpsWatcher();setGpsButtons();$('gpsStatus').textContent='GPS記録を終了しました。距離・時間は保存フォームに反映されています。';updateStats();};
 
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f){photoData='';return}if(f.size>4*1024*1024){alert('写真は4MB以下のものを選んでください。');$('photo').value='';photoData='';return}const reader=new FileReader();reader.onload=()=>{photoData=reader.result};reader.readAsDataURL(f)};
