@@ -13,6 +13,13 @@
 <div class="actions"><button type="button" id="gpsStart">GPS記録を開始</button><button type="button" id="gpsPause" class="secondary" disabled>一時停止</button><button type="button" id="gpsResume" class="secondary" disabled>記録を再開</button><button type="button" id="gpsStop" class="danger" disabled>記録を終了</button></div>
 <div id="gpsStatus" class="status" aria-live="polite">GPS記録は停止中です。</div></section>
 <section class="panel"><h2>地図・ルート</h2><div id="map"></div><p id="routeEstimate" class="status">距離と所要時間の目安：ルート記録を始めると表示します（平均15km/hで概算）。</p><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
+<section class="panel wide"><h2>コース管理（予定ルート）</h2>
+<p class="hint">地図をクリックして作ったルートを、走行実績とは別に保存できます。保存したコースは、走る日に呼び出せます。</p>
+<label for="courseName">コース名</label><input id="courseName" placeholder="例：川沿いサイクリング">
+<div class="fields"><div><label for="savedCourses">保存済みコース</label><select id="savedCourses"><option value="">コースを選択してください</option></select></div><div><label>予定距離・時間</label><p id="courseEstimate" class="status">予定ルートは未選択です。</p></div></div>
+<div class="actions"><button type="button" id="saveCourse">現在のルートをコース保存</button><button type="button" id="loadCourse" class="secondary">選択したコースを地図に表示</button><button type="button" id="deleteCourse" class="danger">選択したコースを削除</button><button type="button" id="clearPlannedRoute" class="secondary">予定ルートを非表示</button></div>
+<div id="courseStatus" class="status" aria-live="polite">予定ルートは任意です。コースを保存しなくてもGPS記録できます。</div>
+</section>
 <section class="panel"><h2>記録を保存</h2><form id="rideForm"><div class="fields"><div><label for="date">日付</label><input id="date" type="date" required></div><div><label for="place">場所・コース名</label><input id="place" placeholder="例：川沿いサイクリング"></div><div><label for="manualDistance">距離（km）</label><input id="manualDistance" type="number" min="0" step="0.01" placeholder="例：18.5"></div><div><label for="manualMinutes">時間（分）</label><input id="manualMinutes" type="number" min="0" step="1" placeholder="例：75"></div></div><label for="notes">感想・メモ</label><textarea id="notes" placeholder="景色、立ち寄った場所、次回行きたいところなど"></textarea><label for="photo">写真（任意）</label><input id="photo" type="file" accept="image/*"><p class="hint">この試作品の記録は、入力したブラウザ内に保存されます。別の端末との共有やバックアップはまだありません。</p><div class="actions"><button type="submit">記録を保存</button></div></form></section>
 <section class="panel"><h2>これまでの記録</h2><div id="history"><p class="empty">まだ記録はありません。最初のサイクリングを保存してみましょう。</p></div><div class="actions"><button id="export" class="secondary">記録をJSONで書き出す</button></div><p class="hint">大切な記録は時々書き出して保管してください。</p></section>
 </main>
@@ -32,7 +39,8 @@ const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
 tileLayer.on('tileerror',()=>{tileErrorCount++;if(tileErrorCount>=3){$('mapStatus').textContent='地図画像を読み込めません（403など）。HTMLをダブルクリックせず、VS CodeのLive Serverなどで http://localhost から開いてください。ルート記録機能は利用できます。';}});
 tileLayer.on('load',()=>{$('mapStatus').textContent='地図を表示しました。地図をクリックしてルートや立ち寄り先を登録できます。';});
 routeLine=L.polyline([],{color:'#16805d',weight:5}).addTo(map);
-function refreshMap(){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
+let plannedPoints=[],plannedLine=L.polyline([],{color:'#2563eb',weight:4,dashArray:'8 8'}).addTo(map);
+function refreshMap(){routeLine.setLatLngs((matchedRoutePoints.length>1?matchedRoutePoints:routePoints).map(p=>[p.lat,p.lng]));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));routeMarkers.forEach(m=>map.removeLayer(m));stopMarkers.forEach(m=>map.removeLayer(m));routeMarkers=[];stopMarkers=[];routePoints.forEach((p,i)=>routeMarkers.push(L.circleMarker([p.lat,p.lng],{radius:6,color:'#176b55',fillOpacity:1}).bindTooltip(`実走・ルート ${i+1}`).addTo(map)));stops.forEach((p,i)=>stopMarkers.push(L.marker([p.lat,p.lng]).bindPopup(`${escapeHtml(p.name||`立ち寄り先 ${i+1}`)}`).addTo(map)));const all=routePoints.concat(stops,plannedPoints);if(all.length>1){const bounds=L.latLngBounds(all.map(p=>[p.lat,p.lng]));map.fitBounds(bounds,{padding:[20,20],maxZoom:15})}else if(all.length===1){map.setView([all[0].lat,all[0].lng],14)}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 map.on('click',e=>{if(gpsState==='recording'){return;}const p={lat:Number(e.latlng.lat.toFixed(6)),lng:Number(e.latlng.lng.toFixed(6))};if($('mapMode').value==='route'){routePoints.push(p);$('mapStatus').textContent=`ルート点を ${routePoints.length} 点登録しました。クリックした順に線でつながります。`}else{const name=prompt('立ち寄り先の名前を入力してください（例：公園、カフェ）');if(name===null)return;stops.push({...p,name:name.trim()||`立ち寄り先 ${stops.length+1}`});$('mapStatus').textContent=`立ち寄り先を ${stops.length} か所登録しました。`}refreshMap();updateStats()});
 $('undoPoint').onclick=()=>{if($('mapMode').value==='stop'&&stops.length)stops.pop();else if(routePoints.length)routePoints.pop();refreshMap();$('mapStatus').textContent='最後の点を削除しました。'};
@@ -66,6 +74,40 @@ async function matchRouteToRoad(){
  finally{matchRequestBusy=false;}
 }
 function scheduleRouteMatch(){if(matchTimer)clearTimeout(matchTimer);matchTimer=setTimeout(matchRouteToRoad,1800);}
+const COURSES_KEY='cycle-note-courses';
+function getCourses(){try{return JSON.parse(localStorage.getItem(COURSES_KEY)||'[]')}catch{return []}}
+function saveCourses(items){localStorage.setItem(COURSES_KEY,JSON.stringify(items))}
+function refreshCourseSelect(selectedId=''){
+ const sel=$('savedCourses'),courses=getCourses();sel.innerHTML='<option value="">コースを選択してください</option>';
+ courses.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.name;sel.appendChild(opt)});
+ if(selectedId)sel.value=selectedId;
+}
+function distanceOf(points){let km=0;for(let i=1;i<points.length;i++)km+=haversineKm(points[i-1],points[i]);return km}
+function showCourseEstimate(points){
+ const km=distanceOf(points);if(points.length<2){$('courseEstimate').textContent='予定距離を計算するには2点以上必要です。';return}
+ const mins=Math.round(km/15*60);$('courseEstimate').textContent=`${km.toFixed(2)} km ／ 約${mins<60?mins+'分':Math.floor(mins/60)+'時間'+(mins%60?mins%60+'分':'')}（平均15km/h）`;
+}
+$('saveCourse').onclick=()=>{
+ const name=$('courseName').value.trim();if(!name){alert('コース名を入力してください。');return}
+ if(routePoints.length<2){alert('先に地図をクリックして、2点以上の予定ルートを作ってください。');return}
+ const courses=getCourses();const course={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),name,route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p})),updatedAt:new Date().toISOString()};
+ courses.push(course);try{saveCourses(courses);refreshCourseSelect(course.id);plannedPoints=course.route.map(p=>({...p}));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));showCourseEstimate(plannedPoints);map.fitBounds(plannedLine.getBounds(),{padding:[24,24],maxZoom:15});$('courseStatus').textContent=`「${name}」を予定コースとして保存しました。実走記録とは別に保存されています。`}catch(e){alert('コースを保存できませんでした。ブラウザの保存容量を確認してください。')}
+};
+$('loadCourse').onclick=()=>{
+ const c=getCourses().find(c=>c.id===$('savedCourses').value);if(!c){$('courseStatus').textContent='呼び出すコースを選択してください。';return}
+ plannedPoints=(c.route||[]).map(p=>({lat:p.lat,lng:p.lng}));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));$('courseName').value=c.name;showCourseEstimate(plannedPoints);
+ if(plannedPoints.length>1)map.fitBounds(plannedLine.getBounds(),{padding:[24,24],maxZoom:15});else if(plannedPoints.length===1)map.setView([plannedPoints[0].lat,plannedPoints[0].lng],15);
+ $('courseStatus').textContent=`「${c.name}」を予定ルートとして表示しました。GPS記録を開始しても予定ルートは残ります。`;
+};
+$('deleteCourse').onclick=()=>{
+ const id=$('savedCourses').value;if(!id){$('courseStatus').textContent='削除するコースを選択してください。';return}
+ const courses=getCourses(),c=courses.find(c=>c.id===id);if(!c||!confirm(`「${c.name}」を削除しますか？`))return;
+ saveCourses(courses.filter(x=>x.id!==id));if(plannedPoints.length&&$('courseName').value===c.name){plannedPoints=[];plannedLine.setLatLngs([]);$('courseEstimate').textContent='予定ルートは未選択です。'}
+ refreshCourseSelect();$('courseStatus').textContent='コースを削除しました。';
+};
+$('clearPlannedRoute').onclick=()=>{plannedPoints=[];plannedLine.setLatLngs([]);$('courseEstimate').textContent='予定ルートは未選択です。';$('courseStatus').textContent='予定ルートを非表示にしました。保存済みコースは削除されていません。'};
+$('savedCourses').onchange=()=>{const c=getCourses().find(c=>c.id===$('savedCourses').value);if(c){$('courseName').value=c.name;showCourseEstimate(c.route||[])}};
+refreshCourseSelect();
 let gpsWatchId=null,gpsState='idle',gpsStartedAt=0,gpsElapsedMs=0,gpsLastPoint=null,gpsDistanceKm=0,gpsTimer=null;
 function formatDuration(mins){return `${Math.floor(mins/60).toString().padStart(2,'0')}:${Math.floor(mins%60).toString().padStart(2,'0')}`}
 function currentGpsMinutes(){const ms=gpsElapsedMs+(gpsState==='recording'?Date.now()-gpsStartedAt:0);return Math.floor(ms/60000)}
