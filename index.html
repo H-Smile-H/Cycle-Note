@@ -60,7 +60,7 @@ input#duration, input#distance {font-size:1.25em;text-align:left;color:#123b32!i
 <p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
 <div class="actions"><button type="button" id="gpsStart">GPS記録を開始</button><button type="button" id="gpsPause" class="secondary" disabled>一時停止</button><button type="button" id="gpsResume" class="secondary" disabled>記録を再開</button><button type="button" id="gpsStop" class="danger" disabled>記録を終了</button></div>
 <div id="gpsStatus" class="status" aria-live="polite">GPS記録は停止中です。</div></section>
-<section class="panel"><h2>地図・ルート</h2><div id="map"></div><div id="mapTopActions" class="actions" style="margin-top:8px"><button type="button" id="returnToCurrentLocation" class="secondary">現在地に戻る・追従ON</button><button type="button" id="clearPlannedRoute" class="secondary">予定ルートを非表示</button><button type="button" id="deletePlannedRoute" class="danger">予定ルート削除</button></div><p id="routeEstimate" class="status">距離と所要時間の目安：ルート記録を始めると表示します（平均15km/hで概算）。</p><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
+<section class="panel"><h2>地図・ルート</h2><div id="map"></div><div id="mapTopActions" class="actions" style="margin-top:8px"><button type="button" id="returnToCurrentLocation" class="secondary">現在地に戻る・追従ON</button><button type="button" id="clearPlannedRoute" class="secondary">予定ルートを非表示</button><button type="button" id="deletePlannedRoute" class="danger">予定ルート削除</button></div><p id="routeEstimate" class="status">距離と所要時間の目安：ルート記録を始めると表示します（平均15km/hで概算）。</p><p id="mapLoadError" class="status" style="color:#a53b3b" hidden>地図のプログラムを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてください。</p><label for="mapMode">地図の操作</label><select id="mapMode"><option value="route">地図をクリックしてルート点を追加</option><option value="stop">地図をクリックして立ち寄り先を追加</option></select><div class="actions"><button type="button" id="undoPoint" class="secondary">最後の点を削除</button><button type="button" id="clearMap" class="secondary">地図の点をすべて消去</button></div><div class="actions" style="margin-top:8px"><button type="button" id="registerRoute" style="background:#176b55;width:100%">ルート登録</button></div><div id="mapStatus" class="status">地図をクリックしてルートや立ち寄り先を手動で登録できます。</div><p class="hint">GPS記録中は位置情報からルート点が追加されます。手動モードでは地図をクリックして点や立ち寄り先を追加できます。地図表示にはインターネット接続が必要です。</p></section>
 <section class="panel wide"><h2>走行記録を保存</h2><form id="rideForm">
 <div class="fields">
 <div><label for="date">日付</label><input id="date" type="date" required></div>
@@ -503,6 +503,31 @@ const oldDeleteCourse=$('deleteCourse').onclick;
 $('deleteCourse').onclick=()=>{if(oldDeleteCourse)oldDeleteCourse();setTimeout(refreshUnifiedCourseOptions,0)};
 
 
+// ルート登録：選択中コースに、地図上のルート点を保存する
+$('registerRoute').onclick=()=>{
+ const courseId=$('courseListPicker').value;
+ if(!courseId || routePoints.length<1){
+  alert('コース選択してください。地図にてルート作成してください。');
+  return;
+ }
+ const courses=getCourses();
+ const idx=courses.findIndex(c=>c.id===courseId);
+ if(idx<0){alert('コース選択してください。地図にてルート作成してください。');return;}
+ const course={...courses[idx],route:routePoints.map(p=>({lat:p.lat,lng:p.lng})),stops:stops.map(p=>({...p})),updatedAt:new Date().toISOString()};
+ courses[idx]=course;
+ try{
+  saveCourses(courses);
+  plannedPoints=course.route.map(p=>({...p}));
+  plannedRouteHidden=false;plannedLine.setStyle({opacity:1});$('clearPlannedRoute').textContent='予定ルートを非表示';
+  plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));
+  if(plannedPoints.length>1)routePointsAlongRoad(plannedPoints,plannedLine,'planned');
+  refreshUnifiedCourseOptions();$('courseListPicker').value=course.id;$('savedCourses').value=course.id;
+  updateTopPlannedValues(course);renderCourseHistory(course.name);
+  $('mapStatus').textContent=`「${course.name}」にルートを登録しました。`;
+  $('courseStatus').textContent=`「${course.name}」のルートを更新しました。`;
+ }catch(e){alert('ルートを登録できませんでした。ブラウザの保存容量を確認してください。');}
+};
+
 centerMapOnCurrentLocation();
 </script><script>
 // ④〜⑥: コース選択必須のデータ登録、記録ごとの編集、計測中の折りたたみ
@@ -801,3 +826,7 @@ $('clearAllScreen').onclick = function() {
 </style>
 
 <style>#editSummary{display:none!important}</style>
+<style>
+#courseListPicker{background:#fff3bf!important;border-color:#d9a400!important;color:#473900}
+#registerRoute{background:#176b55!important;color:#fff!important;width:100%;}
+</style>
