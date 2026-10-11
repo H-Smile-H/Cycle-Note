@@ -47,7 +47,7 @@ input#duration, input#distance {
 .course-options button{display:block;width:100%;padding:10px 12px;text-align:left;border:0;border-radius:0;background:#fff;color:#1f2937}
 .course-options button:hover,.course-options button:focus{background:#e7f5ef}
 .course-options[hidden]{display:none!important}
-input#duration, input#distance {font-size:1.25em;text-align:left;color:#123b32!important;-webkit-text-fill-color:#123b32!important;opacity:1}
+input#duration, input#distance {font-size:1.25em;text-align:left;color:#123b32!important;-webkit-text-fill-color:#123b32!important;opacity:1} #unifiedCourseName.course-name-empty{background:#fff3bf!important;border-color:#d9a400!important} #unifiedCourseName.course-name-empty::placeholder{color:#8a6400}
 @media (max-width: 520px) {
   input#duration, input#distance {font-size:1.05rem;}
 }
@@ -176,7 +176,7 @@ function showCourseEstimate(points){
  $('plannedRouteActions').hidden=!has;
 }
 function showPlannedCourse(c,fit=true){
- plannedPoints=(c&&c.route||[]).map(p=>({lat:p.lat,lng:p.lng}));plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));if(plannedPoints.length>1)routePointsAlongRoad(plannedPoints,plannedLine,'planned');
+ plannedPoints=(c&&c.route||[]).map(p=>({lat:p.lat,lng:p.lng}));plannedRouteHidden=false;plannedLine.setStyle({opacity:1});$('clearPlannedRoute').textContent='予定ルートを非表示';plannedLine.setLatLngs(plannedPoints.map(p=>[p.lat,p.lng]));if(plannedPoints.length>1)routePointsAlongRoad(plannedPoints,plannedLine,'planned');
  if(c){$('place').value=c.name;showCourseEstimate(plannedPoints);if(fit&&plannedPoints.length>1)map.fitBounds(plannedLine.getBounds(),{padding:[24,24],maxZoom:15});$('courseStatus').textContent=`「${c.name}」の予定ルートを表示しています。`}
  else {showCourseEstimate([])}
 }
@@ -195,8 +195,17 @@ $('deleteCourse').onclick=()=>{
  const courses=getCourses(),c=courses.find(c=>c.id===id);if(!c||!confirm(`保存コース「${c.name}」を削除しますか？`))return;
  saveCourses(courses.filter(x=>x.id!==id));if(plannedPoints.length&&$('place').value===c.name){plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([])}refreshCourseSelect();$('courseStatus').textContent='保存コースを削除しました。';
 };
-$('clearPlannedRoute').onclick=()=>{plannedRouteRequest++;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='予定ルートを非表示にしました。保存済みコースは削除されていません。'};
-$('deletePlannedRoute').onclick=()=>{if(!plannedPoints.length)return;if(!confirm('表示中の予定ルートを削除しますか？保存済みコース自体は残ります。'))return;plannedRouteRequest++;plannedPoints=[];plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='表示中の予定ルートを削除しました。保存済みコースは残っています。'};
+let plannedRouteHidden=false;
+$('clearPlannedRoute').onclick=()=>{
+ if(!plannedRouteHidden){
+  plannedRouteHidden=true;plannedLine.setStyle({opacity:0});$('clearPlannedRoute').textContent='予定ルートを再表示';
+  $('courseStatus').textContent='予定ルートを非表示にしています。ボタンで再表示できます。';
+ }else{
+  plannedRouteHidden=false;plannedLine.setStyle({opacity:1});$('clearPlannedRoute').textContent='予定ルートを非表示';
+  $('courseStatus').textContent='予定ルートを再表示しました。';
+ }
+};
+$('deletePlannedRoute').onclick=()=>{if(!plannedPoints.length)return;if(!confirm('表示中の予定ルートを削除しますか？保存済みコース自体は残ります。'))return;plannedRouteRequest++;plannedPoints=[];plannedRouteHidden=false;plannedLine.setStyle({opacity:1});$('clearPlannedRoute').textContent='予定ルートを非表示';plannedLine.setLatLngs([]);showCourseEstimate([]);$('courseStatus').textContent='表示中の予定ルートを削除しました。保存済みコースは残っています。'};
 refreshCourseSelect();
 let gpsWatchId=null,gpsState='idle',gpsStartedAt=0,gpsElapsedMs=0,gpsLastPoint=null,gpsDistanceKm=0,gpsTimer=null;
 function formatDuration(mins){const totalSeconds=Math.max(0,Math.floor((Number(mins)||0)*60));return `${Math.floor(totalSeconds/3600).toString().padStart(2,'0')}:${Math.floor((totalSeconds%3600)/60).toString().padStart(2,'0')}:${(totalSeconds%60).toString().padStart(2,'0')}`}
@@ -389,6 +398,13 @@ function renderCourseHistory(courseName){
   item.addEventListener('click',load);item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();load();}});el.appendChild(item);
  });
 }
+function updateCourseNameHighlight(){
+ const input=$('unifiedCourseName');
+ if(input)input.classList.toggle('course-name-empty',!input.value.trim());
+}
+$('unifiedCourseName').addEventListener('input',updateCourseNameHighlight);
+$('unifiedCourseName').addEventListener('change',updateCourseNameHighlight);
+updateCourseNameHighlight();
 function refreshUnifiedCourseOptions(){
  const courses=getCourses();
  const names=[...new Set(courses.map(c=>c.name).filter(Boolean))];
@@ -397,7 +413,7 @@ function refreshUnifiedCourseOptions(){
  names.forEach(name=>{
    const btn=document.createElement('button');btn.type='button';btn.textContent=name;
    btn.addEventListener('click',()=>{
-     $('unifiedCourseName').value=name;oldPlaceInput.value=name;
+     $('unifiedCourseName').value=name;updateCourseNameHighlight();oldPlaceInput.value=name;
      const course=getCourses().find(c=>c.name===name);
      if(course){
        oldCourseSelect.value=course.id;
