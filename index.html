@@ -34,10 +34,16 @@
 .metric-input{display:block;width:100%;box-sizing:border-box;margin:4px 0 0;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center;outline:none}
 .metric-input[readonly]{cursor:default}
 .metric-input:focus{border-bottom:1px solid #176b55}
+
+input#duration, input#distance {
+  font-size: 1.25em;
+  text-align: left;
+}
+#summaryEditActions button[hidden]{display:none!important}
 </style></head>
 <body><header><h1>🚲 サイクルノート</h1><p>走った道と、出会った景色を記録しよう。</p></header>
 <main class="wrap">
-<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><button type="button" id="editSummary" class="secondary">編集</button></div><div class="stats"><div class="stat"><small>距離</small><input id="distance" class="metric-input" type="text" value="0.00 km" aria-label="実測距離（km）" disabled><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><input id="duration" class="metric-input" type="text" value="00:00" aria-label="実測走行時間" disabled><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
+<section class="panel wide"><div style="display:flex;justify-content:space-between;align-items:center"><h2>走行記録</h2><div id="summaryEditActions" style="display:flex;gap:8px;align-items:center"><button type="button" id="editSummary" class="secondary">編集</button><button type="button" id="updateSummary" class="primary" hidden>更新</button><button type="button" id="cancelSummary" class="secondary" hidden>キャンセル</button></div></div><div class="stats"><div class="stat"><small>距離</small><input id="distance" class="metric-input" type="text" value="0.00 km" aria-label="実測距離（km）" disabled><small class="estimate" id="topPlannedDistance"></small></div><div class="stat"><small>走行時間</small><input id="duration" class="metric-input" type="text" value="00:00" aria-label="実測走行時間" disabled><small class="estimate" id="topPlannedTime"></small></div><div class="stat"><small>平均速度</small><strong id="speed">0.0 km/h</strong><small class="estimate" id="topPlannedSpeed"></small></div></div>
 
 
 <p class="hint">GPSで走行ルートを記録します。距離・時間は「編集」から手入力できます。GPSは「localhost」またはHTTPSで開いたときに利用できます。</p>
